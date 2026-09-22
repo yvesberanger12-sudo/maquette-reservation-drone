@@ -21,15 +21,6 @@
     maxZoom: 19, attribution: 'Tiles &copy; Esri'
   });
   L.control.layers({ Plan: street, Satellite: satellite }, null, { position: 'topright' }).addTo(map);
-  const compass = L.control({ position: 'bottomleft' });
-  compass.onAdd = () => {
-    const element = L.DomUtil.create('div', 'aerozone-compass');
-    element.innerHTML = '<span>N</span>';
-    element.title = 'Nord';
-    return element;
-  };
-  compass.addTo(map);
-
   let activeView = 'booking';
   let drawingType = 'sub';
   let hideSubzones = false;
