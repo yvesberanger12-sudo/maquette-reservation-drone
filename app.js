@@ -366,12 +366,22 @@
       const row = calendarElement('div', 'request');
       const detail = document.createElement('div');
       const date = parseDate(item.date);
-      detail.append(calendarElement('strong', '', (item.creator || 'Pilote') + ' · ' + (item.company || 'Société non renseignée')),
-        calendarElement('span', 'small', 'Zone de vol : ' + item.zone),
-        calendarElement('span', 'small', (date ? reservationDate(date) : item.date) + ' · ' +
-          item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol')),
-        calendarElement('span', 'small', 'Type de machine : ' +
-          ([item.machineBrand, item.machineModel].filter(Boolean).join(' · ') || item.machineKind || 'Non renseigné')));
+      const name = item.creator || 'Pilote';
+      const matchingClients = clients.filter(client =>
+        item.creatorEmail
+          ? client.email.toLowerCase() === item.creatorEmail.toLowerCase()
+          : [client.firstname, client.name].filter(Boolean).join(' ').toLocaleLowerCase('fr-FR') === name.toLocaleLowerCase('fr-FR'));
+      const company = (matchingClients.length === 1 && matchingClients[0].company) ||
+        item.company || 'Société non renseignée';
+      const firstLine = calendarElement('div', 'admin-request-summary');
+      firstLine.append(calendarElement('strong', '', name),
+        document.createTextNode(' - ' + company + ' - Zone de vol : ' + item.zone));
+      const machine = [item.machineBrand, item.machineModel].filter(Boolean).join(' · ') ||
+        item.machineKind || 'Non renseigné';
+      detail.append(firstLine,
+        calendarElement('span', 'small', (date ? reservationDate(date) : item.date) +
+          ' - Heure : ' + item.start + ' à ' + item.end +
+          ' - ' + (item.purpose || 'Vol') + ' - Type de machine : ' + machine));
       const actions = calendarElement('div', 'admin-request-actions');
       const refuse = calendarElement('button', 'admin-refuse-button', 'Refuser la demande');
       refuse.type = 'button';
@@ -1160,6 +1170,7 @@
       machineModel: drone.model, droneClass: drone.droneClass,
       weightGrams: drone.weightGrams,
       creator: root.querySelector('.pilot strong')?.textContent.trim() || 'Pilote',
+      creatorEmail: $('profile-email').value.trim(),
       company: $('profile-company').value.trim(),
       status: 'pending'
     });
