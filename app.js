@@ -29,6 +29,7 @@
   let reservationsMap = null;
   let dashboardMap = null;
   let feedbackTimer = null;
+  let profileDrones = [];
   const mirrorMaps = new Map();
   const reservations = readReservations();
   let calendarView = 'day';
@@ -303,7 +304,8 @@
         const date = parseDate(item.date);
         detail.append(calendarElement('strong', '', item.zone + ' - ' + (date ? shortDate(date) : item.date)),
           calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' +
-            (item.purpose || 'Vol') + (item.machineKind ? ' · ' + item.machineKind : '')));
+            (item.purpose || 'Vol') +
+            (item.machineModel || item.machineKind ? ' · ' + (item.machineModel || item.machineKind) : '')));
         const status = calendarElement('span', 'status' + (item.status === 'confirmed' ? ' ok' : ''),
           item.status === 'confirmed' ? 'Confirmée' : 'En attente');
         row.append(detail, status);
@@ -333,7 +335,7 @@
       detail.append(calendarElement('strong', '', (item.creator || 'Pilote') + ' · ' + item.zone),
         calendarElement('span', 'small', (date ? shortDate(date) : item.date) + ' · ' +
           item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol') +
-          (item.machineKind ? ' · ' + item.machineKind : '')));
+          (item.machineModel || item.machineKind ? ' · ' + (item.machineModel || item.machineKind) : '')));
       const approve = calendarElement('button', 'admin-validate-button', 'Valider la demande');
       approve.type = 'button';
       approve.onclick = () => {
@@ -791,10 +793,67 @@
     notify('Zone ajoutée : ' + name);
   });
 
+  function newDroneId() {
+    return 'drone-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function renumberDroneCards() {
+    root.querySelectorAll('#profile-drones .drone-card').forEach((card, index) => {
+      card.querySelector('.drone-card-title').textContent = 'Drone ' + (index + 1);
+    });
+  }
+
+  function addDroneCard(drone = {}) {
+    $('profile-drones').querySelector('.empty')?.remove();
+    const card = document.createElement('div');
+    card.className = 'drone-card';
+    card.dataset.droneId = drone.id || newDroneId();
+    card.innerHTML = `<div class="drone-card-head"><strong class="drone-card-title"></strong><button class="approve drone-remove" type="button">Retirer</button></div>
+      <div class="two"><label>Type de machine<select data-drone-field="machineKind"><option>Drone</option><option>Aéronef télépiloté</option><option>Autre</option></select></label><label>Marque<input data-drone-field="brand" placeholder="Ex. DJI"></label></div>
+      <div class="two"><label>Type ou modèle de drone<input data-drone-field="model" placeholder="Ex. Mavic 3 Enterprise"></label><label>Classe du drone<select data-drone-field="droneClass"><option value="">Non renseignée</option><option>C0</option><option>C1</option><option>C2</option><option>C3</option><option>C4</option><option>C5</option><option>C6</option><option>Sans classe</option></select></label></div>
+      <label>Poids (g)<input data-drone-field="weightGrams" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 900"></label>`;
+    for (const field of ['machineKind', 'brand', 'model', 'droneClass', 'weightGrams']) {
+      const input = card.querySelector(`[data-drone-field="${field}"]`);
+      if (drone[field] !== undefined && drone[field] !== null) input.value = String(drone[field]);
+    }
+    card.querySelector('.drone-remove').onclick = () => {
+      card.remove();
+      renumberDroneCards();
+    };
+    $('profile-drones').append(card);
+    renumberDroneCards();
+    return card;
+  }
+
+  function renderDroneCards(drones) {
+    $('profile-drones').replaceChildren();
+    if (!drones.length) $('profile-drones').append(calendarElement('p', 'empty',
+      'Aucun drone enregistré. Cliquez sur « Ajouter un drone ».'));
+    drones.forEach(addDroneCard);
+  }
+
+  function syncBookingDrones(drones) {
+    const select = $('flight-machine-kind');
+    const previous = select.value;
+    select.replaceChildren();
+    drones.filter(drone => drone.model?.trim()).forEach(drone => {
+      const label = [drone.brand?.trim(), drone.model.trim()].filter(Boolean).join(' · ');
+      select.add(new Option(label, drone.id));
+    });
+    if (!select.options.length) select.add(new Option('Aucun drone enregistré', ''));
+    select.disabled = !drones.some(drone => drone.model?.trim());
+    $('machine-help').hidden = !select.disabled;
+    if ([...select.options].some(option => option.value === previous)) select.value = previous;
+  }
+
   function loadProfile() {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem('aerozone-profile') || 'null'); } catch {}
-    if (!saved) return;
+    if (!saved) {
+      renderDroneCards([]);
+      syncBookingDrones([]);
+      return;
+    }
     $('profile-name').value = saved.name || '';
     $('profile-firstname').value = saved.firstname || '';
     $('profile-company').value = saved.company || '';
@@ -805,10 +864,15 @@
     root.querySelectorAll('input[name="licence"]').forEach(input => {
       input.checked = (saved.licences || []).includes(input.value);
     });
-    $('machine-kind').value = saved.machineKind || 'Drone';
-    $('flight-machine-kind').value = saved.machineKind || 'Drone';
-    $('machine-brand').value = saved.machineBrand || '';
-    $('machine-model').value = saved.machineModel || '';
+    profileDrones = Array.isArray(saved.drones) ? saved.drones.filter(drone =>
+      drone && typeof drone.model === 'string').map(drone => ({ ...drone, id: drone.id || newDroneId() })) :
+      (saved.machineModel?.trim() ? [{
+        id: newDroneId(), machineKind: saved.machineKind || 'Drone',
+        brand: saved.machineBrand || '', model: saved.machineModel,
+        droneClass: '', weightGrams: ''
+      }] : []);
+    renderDroneCards(profileDrones);
+    syncBookingDrones(profileDrones);
     root.querySelector('.pilot strong').textContent =
       [saved.firstname, saved.name].filter(Boolean).join(' ');
     $('pilot-company').textContent = saved.company?.trim() || 'Société non renseignée';
@@ -824,6 +888,10 @@
   $('exit-admin').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
   $('profile-close').onclick = () => setView('booking');
+  $('add-profile-drone').onclick = () => {
+    const card = addDroneCard();
+    card.querySelector('[data-drone-field="model"]').focus();
+  };
   $('edit-main-zone').onclick = enterMainEdit;
   $('delete-main-points').onclick = showDeletePoints;
   $('edit-flight-zones').onclick = enterFlightEdit;
@@ -951,6 +1019,11 @@
     const date = $('booking-date').value;
     const start = $('start').value;
     const end = $('end').value;
+    const drone = profileDrones.find(item => item.id === $('flight-machine-kind').value);
+    if (!drone) {
+      notify('Ajoutez un drone dans votre profil adhérant avant de réserver');
+      return;
+    }
     if (!flightLayers().some(layer => layer.feature.properties.name === zone)) {
       notify('Sélectionnez une zone de vol disponible');
       return;
@@ -965,7 +1038,9 @@
     }
     reservations.push({
       zone, date, start, end, purpose: $('flight-purpose').value,
-      machineKind: $('flight-machine-kind').value,
+      droneId: drone.id, machineKind: drone.machineKind, machineBrand: drone.brand,
+      machineModel: drone.model, droneClass: drone.droneClass,
+      weightGrams: drone.weightGrams,
       creator: root.querySelector('.pilot strong')?.textContent.trim() || 'Pilote',
       status: 'pending'
     });
@@ -981,20 +1056,33 @@
 
   $('profile-form').onsubmit = event => {
     event.preventDefault();
+    const drones = [...root.querySelectorAll('#profile-drones .drone-card')].map(card => {
+      const value = field => card.querySelector(`[data-drone-field="${field}"]`).value.trim();
+      return {
+        id: card.dataset.droneId, machineKind: value('machineKind'),
+        brand: value('brand'), model: value('model'),
+        droneClass: value('droneClass'), weightGrams: value('weightGrams')
+      };
+    });
+    if (drones.some(drone => !drone.model)) {
+      notify('Renseignez le type ou modèle de chaque drone ajouté');
+      root.querySelector('#profile-drones .drone-card [data-drone-field="model"]:placeholder-shown')?.focus();
+      return;
+    }
     const profile = {
       name: $('profile-name').value, firstname: $('profile-firstname').value,
       company: $('profile-company').value, email: $('profile-email').value,
       role: $('profile-role').value,
       licences: [...root.querySelectorAll('input[name="licence"]:checked')].map(input => input.value),
-      machineKind: $('machine-kind').value,
-      machineBrand: $('machine-brand').value, machineModel: $('machine-model').value
+      drones
     };
     localStorage.setItem('aerozone-profile', JSON.stringify(profile));
     root.querySelector('.pilot strong').textContent =
       [profile.firstname, profile.name].filter(Boolean).join(' ');
     $('pilot-company').textContent = profile.company.trim() || 'Société non renseignée';
     $('pilot-role').textContent = profile.role;
-    $('flight-machine-kind').value = profile.machineKind;
+    profileDrones = drones;
+    syncBookingDrones(profileDrones);
     notify('Profil enregistré');
   };
 
