@@ -28,7 +28,6 @@
     return element;
   };
   compass.addTo(map);
-  L.marker(center).addTo(map).bindPopup('Centre d’Essais en Vol');
 
   let activeView = 'booking';
   let drawingType = 'sub';
