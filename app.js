@@ -156,6 +156,12 @@
     return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' }).format(date);
   }
 
+  function reservationDate(date) {
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    }).format(date);
+  }
+
   function calendarElement(tag, className, content) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -293,6 +299,7 @@
 
   function renderSavedRequests() {
     root.querySelectorAll('[data-calendar-reservation]').forEach(node => node.remove());
+    root.querySelectorAll('[data-reservation-empty]').forEach(node => node.remove());
     const sidebar = $('my-requests');
     const fullList = root.querySelector('#reservations-view .dashboard-card:last-child .card-body');
     const sorted = [...reservations].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
@@ -302,7 +309,7 @@
         row.dataset.calendarReservation = 'true';
         const detail = document.createElement('div');
         const date = parseDate(item.date);
-        detail.append(calendarElement('strong', '', item.zone + ' - ' + (date ? shortDate(date) : item.date)),
+        detail.append(calendarElement('strong', '', item.zone + ' - ' + (date ? reservationDate(date) : item.date)),
           calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' +
             (item.purpose || 'Vol') +
             (item.machineModel || item.machineKind ? ' · ' + (item.machineModel || item.machineKind) : '')));
@@ -315,7 +322,16 @@
       fullList?.append(createRow());
     });
     const count = root.querySelector('#reservations-view .dashboard-card:last-child .dashboard-heading .small');
-    if (count) count.textContent = (2 + reservations.length) + ' vols';
+    if (count) count.textContent = reservations.length + ' vol' + (reservations.length > 1 ? 's' : '');
+    if (!sorted.length) {
+      const emptyRow = () => {
+        const node = calendarElement('p', 'empty', 'Aucune réservation à venir.');
+        node.dataset.reservationEmpty = 'true';
+        return node;
+      };
+      sidebar.append(emptyRow());
+      fullList?.append(emptyRow());
+    }
   }
 
   function renderAdminRequests() {
@@ -333,7 +349,7 @@
       const detail = document.createElement('div');
       const date = parseDate(item.date);
       detail.append(calendarElement('strong', '', (item.creator || 'Pilote') + ' · ' + item.zone),
-        calendarElement('span', 'small', (date ? shortDate(date) : item.date) + ' · ' +
+        calendarElement('span', 'small', (date ? reservationDate(date) : item.date) + ' · ' +
           item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol') +
           (item.machineModel || item.machineKind ? ' · ' + (item.machineModel || item.machineKind) : '')));
       const approve = calendarElement('button', 'admin-validate-button', 'Valider la demande');
@@ -384,10 +400,17 @@
   }
 
   function bindLayer(layer) {
+    if (layer.feature?.properties?.type === 'sub') markHoverLayer(layer);
     layer.on('pm:edit pm:vertexremoved pm:markerdragend', () => {
       saveZones();
       refreshAll();
     });
+  }
+
+  function markHoverLayer(layer) {
+    const mark = () => layer.getElement()?.classList.add('aerozone-hover-zone');
+    layer.on('add', mark);
+    mark();
   }
 
   function addFeature(feature) {
@@ -572,6 +595,7 @@
       style: mirrorStyle,
       onEachFeature: (feature, layer) => {
         if (feature.properties.type !== 'sub') return;
+        markHoverLayer(layer);
         const index = flightLayers().findIndex(item => item.feature.properties.name === feature.properties.name);
         layer.bindTooltip('SZ : ' + (feature.properties.name || 'Sans nom'), {
           permanent: true, direction: 'center',
@@ -1084,13 +1108,6 @@
     profileDrones = drones;
     syncBookingDrones(profileDrones);
     notify('Profil enregistré');
-  };
-
-  $('confirm-flight').onclick = function () {
-    $('flight-status').textContent = 'Pré-vol confirmé';
-    $('reminder-state').textContent = 'Validation effectuée ce matin';
-    this.remove();
-    notify('Pré-vol confirmé');
   };
 
   loadProfile();
