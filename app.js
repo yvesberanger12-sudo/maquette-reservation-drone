@@ -468,6 +468,7 @@
           if (previousName !== value) saveReservations();
           saveZones();
           refreshAll();
+          renderSavedRequests();
           notify('Zone renommée : ' + value);
         };
         cancel.onclick = renderZoneList;
