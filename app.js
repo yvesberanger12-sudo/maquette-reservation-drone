@@ -386,10 +386,16 @@
         document.createTextNode(' - ' + company + ' - Zone de vol : ' + item.zone));
       const machine = [item.machineBrand, item.machineModel].filter(Boolean).join(' · ') ||
         item.machineKind || 'Non renseigné';
-      detail.append(firstLine,
-        calendarElement('span', 'small', (date ? reservationDate(date) : item.date) +
-          ' - Heure : ' + item.start + ' à ' + item.end +
-          ' - ' + (item.purpose || 'Vol') + ' - Type de machine : ' + machine));
+      const secondLine = calendarElement('span', 'small admin-request-detail');
+      const addDetail = (label, value, separator = false) => {
+        if (separator) secondLine.append(document.createTextNode(' - '));
+        secondLine.append(calendarElement('strong', '', label), document.createTextNode(' ' + value));
+      };
+      addDetail('Date :', date ? reservationDate(date) : item.date);
+      addDetail('Heure :', item.start + ' à ' + item.end, true);
+      addDetail('Objet du vol :', item.purpose || 'Vol', true);
+      addDetail('Type de machine :', machine, true);
+      detail.append(firstLine, secondLine);
       const actions = calendarElement('div', 'admin-request-actions');
       const refuse = calendarElement('button', 'admin-refuse-button', 'Refuser la demande');
       refuse.type = 'button';
