@@ -332,7 +332,7 @@
       detail.append(calendarElement('strong', '', (item.creator || 'Pilote') + ' · ' + item.zone),
         calendarElement('span', 'small', (date ? shortDate(date) : item.date) + ' · ' +
           item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol')));
-      const approve = calendarElement('button', 'approve', 'Valider la demande');
+      const approve = calendarElement('button', 'admin-validate-button', 'Valider la demande');
       approve.type = 'button';
       approve.onclick = () => {
         item.status = 'confirmed';
@@ -342,8 +342,7 @@
         renderSavedRequests();
         notify('Demande validée pour ' + item.zone);
       };
-      detail.append(approve);
-      row.append(detail, calendarElement('span', 'status', 'À examiner'));
+      row.append(detail, approve);
       list.append(row);
     });
   }
@@ -798,7 +797,9 @@
     $('profile-firstname').value = saved.firstname || '';
     $('profile-company').value = saved.company || '';
     $('profile-email').value = saved.email || '';
-    $('profile-role').value = saved.role || 'Pilote opérateur';
+    const role = saved.role === 'Responsable d équipe' ? "Responsable d'équipe" :
+      (saved.role || 'Pilote opérateur');
+    $('profile-role').value = role;
     root.querySelectorAll('input[name="licence"]').forEach(input => {
       input.checked = (saved.licences || []).includes(input.value);
     });
@@ -808,7 +809,7 @@
     root.querySelector('.pilot strong').textContent =
       [saved.firstname, saved.name].filter(Boolean).join(' ');
     $('pilot-company').textContent = saved.company?.trim() || 'Société non renseignée';
-    $('pilot-role').textContent = saved.role || 'Pilote opérateur';
+    $('pilot-role').textContent = role;
   }
 
   $('booking-open').onclick = () => setView('booking');
@@ -818,7 +819,6 @@
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
   $('exit-admin').onclick = () => setView('booking');
-  $('back-to-booking').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
   $('profile-close').onclick = () => setView('booking');
   $('edit-main-zone').onclick = enterMainEdit;
