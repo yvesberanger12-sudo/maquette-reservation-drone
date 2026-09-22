@@ -48,6 +48,58 @@
     feedbackTimer = setTimeout(() => toast.classList.remove('show'), 3000);
   }
 
+  function askUser(title, { initial = '', secret = false, confirmOnly = false } = {}) {
+    return new Promise(resolve => {
+      const backdrop = document.createElement('div');
+      Object.assign(backdrop.style, {
+        position: 'fixed', inset: '0', zIndex: '10000',
+        background: '#0b2234a8', display: 'grid', placeItems: 'center', padding: '18px'
+      });
+      const form = document.createElement('form');
+      Object.assign(form.style, {
+        width: 'min(100%, 390px)', background: '#fff', color: '#152432',
+        borderRadius: '12px', padding: '22px', boxShadow: '0 18px 45px #0005',
+        font: '14px system-ui,sans-serif'
+      });
+      const heading = document.createElement('h2');
+      heading.textContent = title;
+      heading.style.margin = '0 0 16px';
+      const input = document.createElement('input');
+      input.type = secret ? 'password' : 'text';
+      input.value = initial;
+      input.autocomplete = 'off';
+      input.style.cssText = 'display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccd8e0;border-radius:7px;margin-bottom:16px';
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;justify-content:flex-end;gap:8px';
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.textContent = 'Annuler';
+      const accept = document.createElement('button');
+      accept.type = 'submit';
+      accept.textContent = confirmOnly ? 'Confirmer' : 'Continuer';
+      accept.style.cssText = 'background:#286178;color:#fff;border:0;border-radius:7px;padding:9px 14px';
+      cancel.style.cssText = 'background:#fff;border:1px solid #ccd8e0;border-radius:7px;padding:9px 14px';
+      actions.append(cancel, accept);
+      form.append(heading);
+      if (!confirmOnly) form.append(input);
+      form.append(actions);
+      backdrop.append(form);
+      document.body.append(backdrop);
+      const finish = value => {
+        backdrop.remove();
+        resolve(value);
+      };
+      cancel.onclick = () => finish(null);
+      backdrop.onclick = event => { if (event.target === backdrop) finish(null); };
+      form.onsubmit = event => {
+        event.preventDefault();
+        finish(confirmOnly ? true : input.value.trim());
+      };
+      if (!confirmOnly) input.focus();
+      else accept.focus();
+    });
+  }
+
   function readCollection(key) {
     try {
       const value = JSON.parse(localStorage.getItem(key) || 'null');
@@ -220,9 +272,9 @@
       remove.type = 'button';
       remove.className = 'delete-zone';
       remove.textContent = 'Supprimer';
-      remove.onclick = () => {
+      remove.onclick = async () => {
         const label = layer.feature.properties.name || 'cette zone';
-        if (!window.confirm('Supprimer la zone ' + label + ' ?')) return;
+        if (!await askUser('Supprimer la zone ' + label + ' ?', { confirmOnly: true })) return;
         zones.removeLayer(layer);
         saveZones();
         refreshAll();
@@ -345,12 +397,12 @@
     return source?.match(/mockAdminPassword='([^']+)'/)?.[1] || '';
   }
 
-  function openAdmin() {
+  async function openAdmin() {
     if (!adminAuthenticated) {
-      const entered = window.prompt('Mot de passe administrateur');
+      const entered = await askUser('Accès administrateur', { secret: true });
       if (entered === null) return;
       if (entered !== getMockPassword()) {
-        window.alert('Mot de passe incorrect');
+        notify('Mot de passe incorrect');
         return;
       }
       adminAuthenticated = true;
@@ -423,10 +475,10 @@
     notify('Dessinez une zone ou cliquez sur son nom pour la modifier');
   }
 
-  map.on('pm:create', event => {
+  map.on('pm:create', async event => {
     const layer = event.layer;
     if (drawingType === 'main' && mainLayer()) {
-      if (!window.confirm('Remplacer la zone principale existante ?')) {
+      if (!await askUser('Remplacer la zone principale existante ?', { confirmOnly: true })) {
         map.removeLayer(layer);
         return;
       }
@@ -437,10 +489,10 @@
       notify('Créez d’abord une zone principale');
       return;
     }
-    const name = window.prompt(
+    const name = (await askUser(
       drawingType === 'main' ? 'Nom de la zone principale' : 'Nom de la zone de vol',
-      drawingType === 'main' ? 'Zone principale' : 'Nouvelle zone'
-    )?.trim();
+      { initial: drawingType === 'main' ? 'Zone principale' : 'Nouvelle zone' }
+    ))?.trim();
     if (!name) {
       map.removeLayer(layer);
       return;
@@ -522,13 +574,13 @@
   restoreButton.type = 'button';
   restoreButton.className = 'approve';
   restoreButton.textContent = 'Restaurer la sauvegarde précédente';
-  restoreButton.onclick = () => {
+  restoreButton.onclick = async () => {
     const backup = readCollection(backupKey);
     if (!backup) {
       notify('Aucune sauvegarde précédente disponible');
       return;
     }
-    if (!window.confirm('Restaurer la version précédente des zones ?')) return;
+    if (!await askUser('Restaurer la version précédente des zones ?', { confirmOnly: true })) return;
     const current = localStorage.getItem(storageKey);
     zones.clearLayers();
     backup.features.forEach(addFeature);
