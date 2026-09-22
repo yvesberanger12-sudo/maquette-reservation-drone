@@ -7,6 +7,7 @@
 
   const storageKey = 'aerozone-zones';
   const backupKey = 'aerozone-zones-backup';
+  const reservationKey = 'aerozone-calendar-reservations';
   const center = [48.5951055, 2.3212347];
   const palette = ['#166c8b', '#c06c84', '#bc7c18', '#39855b', '#6b5cc7', '#b2519b'];
   const zones = L.featureGroup();
@@ -38,6 +39,9 @@
   let dashboardMap = null;
   let feedbackTimer = null;
   const mirrorMaps = new Map();
+  const reservations = readReservations();
+  let calendarView = 'day';
+  let calendarDate = parseDate($('booking-date').value) || new Date();
 
   function notify(message) {
     const toast = $('toast');
@@ -106,6 +110,210 @@
     } catch {
       return null;
     }
+  }
+
+  function readReservations() {
+    try {
+      const value = JSON.parse(localStorage.getItem(reservationKey) || '[]');
+      return Array.isArray(value) ? value.filter(item =>
+        item && typeof item.zone === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date) &&
+        /^\d{2}:00$/.test(item.start) && /^\d{2}:00$/.test(item.end)) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveReservations() {
+    try { localStorage.setItem(reservationKey, JSON.stringify(reservations)); }
+    catch { notify('Impossible d’enregistrer la réservation dans ce navigateur'); }
+  }
+
+  function parseDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+    if (!match) return null;
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    return date.getFullYear() === Number(match[1]) && date.getMonth() === Number(match[2]) - 1 &&
+      date.getDate() === Number(match[3]) ? date : null;
+  }
+
+  function isoDate(date) {
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0')].join('-');
+  }
+
+  function dateAfter(date, days) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+  }
+
+  function mondayOf(date) {
+    return dateAfter(date, -((date.getDay() + 6) % 7));
+  }
+
+  function hourText(hour) {
+    return String(hour).padStart(2, '0') + ':00';
+  }
+
+  function shortDate(date) {
+    return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' }).format(date);
+  }
+
+  function calendarElement(tag, className, content) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (content !== undefined) node.textContent = content;
+    return node;
+  }
+
+  function slotStatus(zone, date, hour) {
+    const start = hourText(hour);
+    const end = hourText(hour + 1);
+    const matches = reservations.filter(item => item.zone === zone && item.date === date &&
+      item.start < end && item.end > start);
+    if (matches.some(item => item.status === 'confirmed')) return 'confirmed';
+    return matches.length ? 'pending' : 'free';
+  }
+
+  function selectCalendarSlot(zone, date, hour) {
+    $('zone-select').value = zone;
+    $('zone-label').textContent = zone;
+    $('booking-date').value = date;
+    $('start').value = hourText(hour);
+    $('end').value = hourText(hour + 1);
+    selectedZone = zone;
+    calendarDate = parseDate(date);
+    refreshMainMap();
+    renderCalendar();
+    notify(zone + ' · ' + shortDate(calendarDate) + ' · ' + hourText(hour) + ' à ' + hourText(hour + 1));
+    if (window.innerWidth < 900) $('booking-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function calendarSlot(zone, date, hour, compact = false) {
+    const status = slotStatus(zone, date, hour);
+    const label = status === 'free' ? 'Libre' : status === 'pending' ? 'En attente' : 'Réservé';
+    const button = calendarElement('button', 'calendar-slot ' + status, compact ? hourText(hour).slice(0, 2) + 'h' : label);
+    button.type = 'button';
+    button.title = zone + ' · ' + date + ' · ' + hourText(hour) + '–' + hourText(hour + 1) + ' · ' + label;
+    button.setAttribute('aria-label', button.title);
+    button.disabled = status !== 'free';
+    if (zone === $('zone-select').value && date === $('booking-date').value && hourText(hour) === $('start').value)
+      button.classList.add('selected');
+    button.onclick = () => selectCalendarSlot(zone, date, hour);
+    return button;
+  }
+
+  function renderCalendar() {
+    const target = $('booking-calendar');
+    if (!target) return;
+    target.replaceChildren();
+    $('calendar-date').value = isoDate(calendarDate);
+    root.querySelectorAll('[data-calendar-view]').forEach(button => {
+      const active = button.dataset.calendarView === calendarView;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    const names = flightLayers().map(layer => layer.feature.properties.name || 'Zone sans nom');
+    const title = $('availability-title');
+    if (calendarView === 'day') title.textContent = 'Disponibilités du ' + shortDate(calendarDate);
+    if (calendarView === 'week') {
+      const monday = mondayOf(calendarDate);
+      title.textContent = 'Semaine du ' + shortDate(monday) + ' au ' + shortDate(dateAfter(monday, 6));
+    }
+    if (calendarView === 'month') title.textContent = 'Disponibilités · ' +
+      new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(calendarDate);
+    if (!names.length) {
+      target.append(calendarElement('p', 'calendar-empty', 'Aucune zone de vol disponible. Créez une zone dans la partie administrateur.'));
+      return;
+    }
+    if (calendarView === 'month') {
+      const summary = calendarElement('p', 'calendar-month-summary', 'Zones de vol : ' + names.join(', '));
+      const grid = calendarElement('div', 'month-grid');
+      ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].forEach(day =>
+        grid.append(calendarElement('div', 'month-weekday', day)));
+      const first = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
+      const firstMonday = mondayOf(first);
+      const days = Math.ceil((new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate() +
+        (first.getDay() + 6) % 7) / 7) * 7;
+      for (let offset = 0; offset < days; offset++) {
+        const date = dateAfter(firstMonday, offset);
+        const key = isoDate(date);
+        const count = reservations.filter(item => item.date === key && names.includes(item.zone)).length;
+        const button = calendarElement('button', 'month-day' +
+          (date.getMonth() !== first.getMonth() ? ' outside' : '') +
+          (key === isoDate(new Date()) ? ' today' : ''));
+        button.type = 'button';
+        button.append(calendarElement('span', 'day-number', String(date.getDate())),
+          calendarElement('span', 'day-hours', '08:00–19:00'));
+        if (count) button.append(calendarElement('span', 'day-count', count + ' demande' + (count > 1 ? 's' : '')));
+        button.setAttribute('aria-label', shortDate(date) + (count ? ' · ' + count + ' demandes' : ' · libre de 08:00 à 19:00'));
+        button.onclick = () => {
+          calendarDate = date;
+          calendarView = 'day';
+          $('booking-date').value = key;
+          renderCalendar();
+        };
+        grid.append(button);
+      }
+      target.append(summary, grid);
+      return;
+    }
+    const table = calendarElement('table', 'calendar-table ' + calendarView);
+    table.setAttribute('aria-label', calendarView === 'day' ? 'Créneaux par zone et par heure' : 'Créneaux par zone et par jour');
+    const head = table.createTHead().insertRow();
+    head.append(calendarElement('th', '', 'Zone'));
+    const monday = mondayOf(calendarDate);
+    if (calendarView === 'day') {
+      for (let hour = 8; hour < 19; hour++) head.append(calendarElement('th', '', hourText(hour)));
+    } else {
+      for (let day = 0; day < 7; day++) {
+        const date = dateAfter(monday, day);
+        head.append(calendarElement('th', '', new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'numeric' }).format(date)));
+      }
+    }
+    const body = table.createTBody();
+    names.forEach(zone => {
+      const row = body.insertRow();
+      row.append(calendarElement('td', '', zone));
+      if (calendarView === 'day') {
+        for (let hour = 8; hour < 19; hour++) {
+          const cell = row.insertCell();
+          cell.append(calendarSlot(zone, isoDate(calendarDate), hour));
+        }
+      } else {
+        for (let day = 0; day < 7; day++) {
+          const date = isoDate(dateAfter(monday, day));
+          const cell = row.insertCell();
+          const slots = calendarElement('div', 'week-slots');
+          for (let hour = 8; hour < 19; hour++) slots.append(calendarSlot(zone, date, hour, true));
+          cell.append(slots);
+        }
+      }
+    });
+    target.append(table);
+  }
+
+  function renderSavedRequests() {
+    root.querySelectorAll('[data-calendar-reservation]').forEach(node => node.remove());
+    const sidebar = $('my-requests');
+    const fullList = root.querySelector('#reservations-view .dashboard-card:last-child .card-body');
+    const sorted = [...reservations].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    sorted.forEach(item => {
+      const createRow = () => {
+        const row = calendarElement('div', 'request');
+        row.dataset.calendarReservation = 'true';
+        const detail = document.createElement('div');
+        const date = parseDate(item.date);
+        detail.append(calendarElement('strong', '', item.zone + ' - ' + (date ? shortDate(date) : item.date)),
+          calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol')));
+        const status = calendarElement('span', 'status' + (item.status === 'confirmed' ? ' ok' : ''),
+          item.status === 'confirmed' ? 'Confirmée' : 'En attente');
+        row.append(detail, status);
+        return row;
+      };
+      sidebar.prepend(createRow());
+      fullList?.append(createRow());
+    });
+    const count = root.querySelector('#reservations-view .dashboard-card:last-child .dashboard-heading .small');
+    if (count) count.textContent = (2 + reservations.length) + ' vols';
   }
 
   function currentFeatures() {
@@ -254,7 +462,10 @@
         save.onclick = () => {
           const value = input.value.trim();
           if (!value) return;
+          const previousName = layer.feature.properties.name;
           layer.feature.properties.name = value;
+          reservations.forEach(item => { if (item.zone === previousName) item.zone = value; });
+          if (previousName !== value) saveReservations();
           saveZones();
           refreshAll();
           notify('Zone renommée : ' + value);
@@ -289,6 +500,7 @@
     refreshZoneSelect();
     refreshMainMap();
     renderZoneList();
+    renderCalendar();
     refreshMirrorMaps();
   }
 
@@ -609,37 +821,99 @@
   };
   exportButton.after(restoreButton);
 
+  function setupBookingHours() {
+    const start = $('start');
+    const end = $('end');
+    const initialStart = start.value;
+    const initialEnd = end.value;
+    start.replaceChildren();
+    end.replaceChildren();
+    for (let hour = 8; hour < 19; hour++) start.add(new Option(hourText(hour), hourText(hour)));
+    for (let hour = 9; hour <= 19; hour++) end.add(new Option(hourText(hour), hourText(hour)));
+    start.value = [...start.options].some(option => option.value === initialStart) ? initialStart : '08:00';
+    end.value = [...end.options].some(option => option.value === initialEnd) ? initialEnd : '09:00';
+  }
+
+  setupBookingHours();
+  root.querySelectorAll('[data-calendar-view]').forEach(button => {
+    button.onclick = () => {
+      calendarView = button.dataset.calendarView;
+      renderCalendar();
+    };
+  });
+  $('calendar-prev').onclick = () => {
+    calendarDate = calendarView === 'month'
+      ? new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1)
+      : dateAfter(calendarDate, calendarView === 'week' ? -7 : -1);
+    renderCalendar();
+  };
+  $('calendar-next').onclick = () => {
+    calendarDate = calendarView === 'month'
+      ? new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1)
+      : dateAfter(calendarDate, calendarView === 'week' ? 7 : 1);
+    renderCalendar();
+  };
+  $('calendar-today').onclick = () => {
+    calendarDate = new Date();
+    $('booking-date').value = isoDate(calendarDate);
+    renderCalendar();
+  };
+  $('calendar-date').onchange = () => {
+    const date = parseDate($('calendar-date').value);
+    if (!date) return;
+    calendarDate = date;
+    $('booking-date').value = isoDate(date);
+    renderCalendar();
+  };
+  $('booking-date').onchange = () => {
+    const date = parseDate($('booking-date').value);
+    if (!date) return;
+    calendarDate = date;
+    renderCalendar();
+  };
+  $('start').onchange = () => {
+    if ($('end').value <= $('start').value) {
+      const next = Number($('start').value.slice(0, 2)) + 1;
+      $('end').value = hourText(next);
+    }
+    renderCalendar();
+  };
+
   $('zone-select').onchange = () => {
     selectedZone = $('zone-select').value;
     $('zone-label').textContent = selectedZone;
     refreshMainMap();
+    renderCalendar();
     const layer = flightLayers().find(item => item.feature.properties.name === selectedZone);
     if (layer) map.fitBounds(layer.getBounds(), { padding: [40, 40] });
   };
 
   $('booking-form').onsubmit = event => {
     event.preventDefault();
-    if ($('start').value >= $('end').value) {
-      notify('L’heure de fin doit être postérieure au début');
+    const zone = $('zone-select').value;
+    const date = $('booking-date').value;
+    const start = $('start').value;
+    const end = $('end').value;
+    if (!flightLayers().some(layer => layer.feature.properties.name === zone)) {
+      notify('Sélectionnez une zone de vol disponible');
       return;
     }
-    selectedZone = $('zone-select').value;
-    const item = document.createElement('div');
-    item.className = 'request';
-    const detail = document.createElement('div');
-    const title = document.createElement('strong');
-    title.textContent = selectedZone + ' - demande envoyée';
-    const hours = document.createElement('span');
-    hours.className = 'small';
-    hours.textContent = $('start').value + ' à ' + $('end').value;
-    const status = document.createElement('span');
-    status.className = 'status';
-    status.textContent = 'En attente';
-    detail.append(title, hours);
-    item.append(detail, status);
-    $('my-requests').prepend(item);
+    if (!parseDate(date) || start < '08:00' || end > '19:00' || start >= end) {
+      notify('Choisissez une date et un horaire entre 08:00 et 19:00');
+      return;
+    }
+    if (reservations.some(item => item.zone === zone && item.date === date && item.start < end && item.end > start)) {
+      notify('Ce créneau est déjà demandé pour cette zone');
+      return;
+    }
+    reservations.push({ zone, date, start, end, purpose: $('flight-purpose').value, status: 'pending' });
+    saveReservations();
+    selectedZone = zone;
+    calendarDate = parseDate(date);
     refreshMainMap();
-    notify('Demande envoyée pour ' + selectedZone);
+    renderCalendar();
+    renderSavedRequests();
+    notify('Demande envoyée pour ' + zone);
   };
 
   $('profile-form').onsubmit = event => {
@@ -675,6 +949,7 @@
   };
 
   loadProfile();
+  renderSavedRequests();
   const saved = readCollection(storageKey);
   if (saved) saved.features.forEach(addFeature);
   refreshAll();
