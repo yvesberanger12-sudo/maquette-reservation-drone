@@ -302,7 +302,8 @@
         const detail = document.createElement('div');
         const date = parseDate(item.date);
         detail.append(calendarElement('strong', '', item.zone + ' - ' + (date ? shortDate(date) : item.date)),
-          calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol')));
+          calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' +
+            (item.purpose || 'Vol') + (item.machineKind ? ' · ' + item.machineKind : '')));
         const status = calendarElement('span', 'status' + (item.status === 'confirmed' ? ' ok' : ''),
           item.status === 'confirmed' ? 'Confirmée' : 'En attente');
         row.append(detail, status);
@@ -331,7 +332,8 @@
       const date = parseDate(item.date);
       detail.append(calendarElement('strong', '', (item.creator || 'Pilote') + ' · ' + item.zone),
         calendarElement('span', 'small', (date ? shortDate(date) : item.date) + ' · ' +
-          item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol')));
+          item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol') +
+          (item.machineKind ? ' · ' + item.machineKind : '')));
       const approve = calendarElement('button', 'admin-validate-button', 'Valider la demande');
       approve.type = 'button';
       approve.onclick = () => {
@@ -804,6 +806,7 @@
       input.checked = (saved.licences || []).includes(input.value);
     });
     $('machine-kind').value = saved.machineKind || 'Drone';
+    $('flight-machine-kind').value = saved.machineKind || 'Drone';
     $('machine-brand').value = saved.machineBrand || '';
     $('machine-model').value = saved.machineModel || '';
     root.querySelector('.pilot strong').textContent =
@@ -962,6 +965,7 @@
     }
     reservations.push({
       zone, date, start, end, purpose: $('flight-purpose').value,
+      machineKind: $('flight-machine-kind').value,
       creator: root.querySelector('.pilot strong')?.textContent.trim() || 'Pilote',
       status: 'pending'
     });
@@ -990,6 +994,7 @@
       [profile.firstname, profile.name].filter(Boolean).join(' ');
     $('pilot-company').textContent = profile.company.trim() || 'Société non renseignée';
     $('pilot-role').textContent = profile.role;
+    $('flight-machine-kind').value = profile.machineKind;
     notify('Profil enregistré');
   };
 
