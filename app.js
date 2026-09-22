@@ -438,13 +438,32 @@
       editingPoints.clearLayers();
       const paths = layer.getLatLngs();
       const rings = Array.isArray(paths[0]) ? paths : [paths];
-      rings.forEach(ring => {
+      rings.forEach((ring, ringIndex) => {
         ring.forEach((point, index) => {
           L.circleMarker(point, {
             radius: 8, color: '#fff', weight: 2, fillColor: '#d63737', fillOpacity: 1
-          }).addTo(editingPoints).bindTooltip('Supprimer ce point').on('click', () => {
+          }).addTo(editingPoints).bindTooltip(
+            ring.length > 3 ? 'Supprimer ce point' :
+              ringIndex === 0 ? 'Supprimer la zone principale' : 'Supprimer ce contour intérieur'
+          ).on('click', async () => {
             if (ring.length <= 3) {
-              notify('Un contour doit conserver au moins trois points');
+              if (ringIndex === 0) {
+                if (!await askUser('Supprimer toute la zone principale et ses contours intérieurs ?', { confirmOnly: true })) return;
+                zones.removeLayer(layer);
+                clearEditing();
+                showSubzones(true);
+                saveZones();
+                refreshAll();
+                notify('Zone principale supprimée. Les zones de vol sont conservées.');
+              } else {
+                if (!await askUser('Supprimer ce contour intérieur ?', { confirmOnly: true })) return;
+                rings.splice(ringIndex, 1);
+                layer.setLatLngs(paths);
+                layer.feature.geometry = layer.toGeoJSON().geometry;
+                saveZones();
+                renderPoints();
+                notify('Contour intérieur supprimé et enregistré');
+              }
               return;
             }
             ring.splice(index, 1);
