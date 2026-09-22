@@ -149,6 +149,13 @@
     return dateAfter(date, -((date.getDay() + 6) % 7));
   }
 
+  function isoWeekNumber(date) {
+    const thursday = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    thursday.setUTCDate(thursday.getUTCDate() + 4 - (thursday.getUTCDay() || 7));
+    const firstDay = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 1));
+    return Math.ceil((((thursday - firstDay) / 86400000) + 1) / 7);
+  }
+
   function hourText(hour) {
     return String(hour).padStart(2, '0') + ':00';
   }
@@ -206,6 +213,7 @@
     if (!target) return;
     target.replaceChildren();
     $('calendar-date').value = isoDate(calendarDate);
+    $('calendar-week-label').textContent = 'Semaine ' + isoWeekNumber(calendarDate);
     root.querySelectorAll('[data-calendar-view]').forEach(button => {
       const active = button.dataset.calendarView === calendarView;
       button.classList.toggle('active', active);
