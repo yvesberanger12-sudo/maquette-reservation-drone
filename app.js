@@ -324,6 +324,39 @@
     if (count) count.textContent = (2 + reservations.length) + ' vols';
   }
 
+  function renderAdminRequests() {
+    const list = $('admin-request-list');
+    list.replaceChildren();
+    const pending = reservations.filter(item => item.status !== 'confirmed')
+      .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    $('admin-request-count').textContent = pending.length + ' demande' + (pending.length > 1 ? 's' : '');
+    if (!pending.length) {
+      list.append(calendarElement('p', 'empty', 'Aucune demande en attente dans ce navigateur.'));
+      return;
+    }
+    pending.forEach(item => {
+      const row = calendarElement('div', 'request');
+      const detail = document.createElement('div');
+      const date = parseDate(item.date);
+      detail.append(calendarElement('strong', '', (item.creator || 'Pilote') + ' · ' + item.zone),
+        calendarElement('span', 'small', (date ? shortDate(date) : item.date) + ' · ' +
+          item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol')));
+      const approve = calendarElement('button', 'approve', 'Valider la demande');
+      approve.type = 'button';
+      approve.onclick = () => {
+        item.status = 'confirmed';
+        saveReservations();
+        renderAdminRequests();
+        renderCalendar();
+        renderSavedRequests();
+        notify('Demande validée pour ' + item.zone);
+      };
+      detail.append(approve);
+      row.append(detail, calendarElement('span', 'status', 'À examiner'));
+      list.append(row);
+    });
+  }
+
   function currentFeatures() {
     return zones.getLayers().map(layer => layer.toGeoJSON());
   }
@@ -477,6 +510,7 @@
           saveZones();
           refreshAll();
           renderSavedRequests();
+          renderAdminRequests();
           notify('Zone renommée : ' + value);
         };
         cancel.onclick = renderZoneList;
@@ -575,7 +609,17 @@
     return target;
   }
 
-  function setView(view) {
+  function setAdminSection(section) {
+    const validation = section === 'validation';
+    $('admin-map-panel').hidden = validation;
+    $('admin-validation').hidden = !validation;
+    $('admin-map-open').classList.toggle('active', !validation);
+    $('admin-validation-open').classList.toggle('active', validation);
+    if (validation) renderAdminRequests();
+    else requestAnimationFrame(() => map.invalidateSize());
+  }
+
+  function setView(view, adminSection = 'map') {
     if (activeView === 'admin' && view !== 'admin') saveZones();
     clearEditing();
     showSubzones(true);
@@ -587,6 +631,8 @@
     $('flight-dashboard').hidden = view !== 'dashboard';
     $('profile-panel').hidden = view !== 'profile';
     $('admin-view').hidden = view !== 'admin';
+    $('admin-subnav').hidden = view !== 'admin';
+    $('admin-nav').setAttribute('aria-expanded', String(view === 'admin'));
     if (view === 'admin') $('admin-map-host').append($('site-map'));
     else $('site-map-home').append($('site-map'));
     root.querySelectorAll('.nav button').forEach(button => {
@@ -597,6 +643,7 @@
       button.classList.toggle('active', name === view);
     });
     root.classList.toggle('admin-on', view === 'admin');
+    if (view === 'admin') setAdminSection(adminSection);
     if (view === 'reservations') {
       reservationsMap ||= createMirrorMap('reservations-map');
       refreshMirrorMap(reservationsMap);
@@ -617,7 +664,7 @@
     return source?.match(/mockAdminPassword='([^']+)'/)?.[1] || '';
   }
 
-  async function openAdmin() {
+  async function openAdmin(section = 'map') {
     if (!adminAuthenticated) {
       const entered = await askUser('Accès administrateur', { secret: true });
       if (entered === null) return;
@@ -627,7 +674,11 @@
       }
       adminAuthenticated = true;
     }
-    setView('admin');
+    if (activeView === 'admin' && section === 'validation') {
+      clearEditing();
+      saveZones();
+    }
+    setView('admin', section);
   }
 
   function enterMainEdit() {
@@ -772,7 +823,9 @@
   $('booking-open').onclick = () => setView('booking');
   $('reservations-open').onclick = () => setView('reservations');
   $('flight-dashboard-open').onclick = () => setView('dashboard');
-  $('admin-nav').onclick = openAdmin;
+  $('admin-nav').onclick = () => openAdmin('map');
+  $('admin-map-open').onclick = () => openAdmin('map');
+  $('admin-validation-open').onclick = () => openAdmin('validation');
   $('exit-admin').onclick = () => setView('booking');
   $('back-to-booking').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
@@ -916,13 +969,18 @@
       notify('Ce créneau est déjà demandé pour cette zone');
       return;
     }
-    reservations.push({ zone, date, start, end, purpose: $('flight-purpose').value, status: 'pending' });
+    reservations.push({
+      zone, date, start, end, purpose: $('flight-purpose').value,
+      creator: root.querySelector('.pilot strong')?.textContent.trim() || 'Pilote',
+      status: 'pending'
+    });
     saveReservations();
     selectedZone = zone;
     calendarDate = parseDate(date);
     refreshMainMap();
     renderCalendar();
     renderSavedRequests();
+    renderAdminRequests();
     notify('Demande envoyée pour ' + zone);
   };
 
@@ -944,14 +1002,6 @@
     notify('Profil enregistré');
   };
 
-  $('approve').onclick = function () {
-    const request = this.closest('.request');
-    const status = request.querySelector('.status');
-    status.textContent = 'Validée';
-    status.classList.add('ok');
-    this.remove();
-    notify('Demande validée');
-  };
   $('confirm-flight').onclick = function () {
     $('flight-status').textContent = 'Pré-vol confirmé';
     $('reminder-state').textContent = 'Validation effectuée ce matin';
@@ -961,6 +1011,7 @@
 
   loadProfile();
   renderSavedRequests();
+  renderAdminRequests();
   const saved = readCollection(storageKey);
   if (saved) saved.features.forEach(addFeature);
   refreshAll();
