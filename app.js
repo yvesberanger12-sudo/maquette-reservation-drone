@@ -367,11 +367,19 @@
       const detail = document.createElement('div');
       const date = parseDate(item.date);
       const name = item.creator || 'Pilote';
+      const normalizedName = value => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('fr-FR');
+      let savedProfile = null;
+      try { savedProfile = JSON.parse(localStorage.getItem('aerozone-profile') || 'null'); } catch {}
+      const profileName = [savedProfile?.firstname, savedProfile?.name].filter(Boolean).join(' ');
+      const profileMatches = item.creatorEmail
+        ? item.creatorEmail.trim().toLowerCase() === String(savedProfile?.email || '').trim().toLowerCase()
+        : normalizedName(name) === normalizedName(profileName);
+      const profileCompany = profileMatches ? String(savedProfile?.company || '').trim() : '';
       const matchingClients = clients.filter(client =>
         item.creatorEmail
           ? client.email.toLowerCase() === item.creatorEmail.toLowerCase()
           : [client.firstname, client.name].filter(Boolean).join(' ').toLocaleLowerCase('fr-FR') === name.toLocaleLowerCase('fr-FR'));
-      const company = (matchingClients.length === 1 && matchingClients[0].company) ||
+      const company = profileCompany || (matchingClients.length === 1 && matchingClients[0].company) ||
         item.company || 'Société non renseignée';
       const firstLine = calendarElement('div', 'admin-request-summary');
       firstLine.append(calendarElement('strong', '', name),
