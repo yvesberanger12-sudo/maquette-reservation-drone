@@ -680,7 +680,7 @@
   refreshAll();
   if (zones.getLayers().length) map.fitBounds(zones.getBounds(), { padding: [20, 20] });
 
-  if (!mainLayer()) {
+  if (!saved && !mainLayer()) {
     fetch('zone-principale.json')
       .then(response => {
         if (!response.ok) throw new Error('Import indisponible');
