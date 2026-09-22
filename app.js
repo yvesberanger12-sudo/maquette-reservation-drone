@@ -757,6 +757,7 @@
     $('machine-model').value = saved.machineModel || '';
     root.querySelector('.pilot strong').textContent =
       [saved.firstname, saved.name].filter(Boolean).join(' ');
+    $('pilot-company').textContent = saved.company?.trim() || 'Société non renseignée';
     $('pilot-role').textContent = saved.role || 'Pilote opérateur';
   }
 
@@ -930,6 +931,7 @@
     localStorage.setItem('aerozone-profile', JSON.stringify(profile));
     root.querySelector('.pilot strong').textContent =
       [profile.firstname, profile.name].filter(Boolean).join(' ');
+    $('pilot-company').textContent = profile.company.trim() || 'Société non renseignée';
     $('pilot-role').textContent = profile.role;
     notify('Profil enregistré');
   };
