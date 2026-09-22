@@ -190,7 +190,7 @@
   function slotStatus(zone, date, hour) {
     const start = hourText(hour);
     const end = hourText(hour + 1);
-    const matches = reservations.filter(item => item.zone === zone && item.date === date &&
+    const matches = reservations.filter(item => item.status !== 'rejected' && item.zone === zone && item.date === date &&
       item.start < end && item.end > start);
     if (matches.some(item => item.status === 'confirmed')) return 'confirmed';
     return matches.length ? 'pending' : 'free';
@@ -260,7 +260,7 @@
       for (let offset = 0; offset < days; offset++) {
         const date = dateAfter(firstMonday, offset);
         const key = isoDate(date);
-        const count = reservations.filter(item => item.date === key && names.includes(item.zone)).length;
+        const count = reservations.filter(item => item.status !== 'rejected' && item.date === key && names.includes(item.zone)).length;
         const button = calendarElement('button', 'month-day' +
           (date.getMonth() !== first.getMonth() ? ' outside' : '') +
           (key === isoDate(new Date()) ? ' today' : ''));
@@ -331,8 +331,8 @@
           calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' +
             (item.purpose || 'Vol') +
             (item.machineModel || item.machineKind ? ' · ' + (item.machineModel || item.machineKind) : '')));
-        const status = calendarElement('span', 'status' + (item.status === 'confirmed' ? ' ok' : ''),
-          item.status === 'confirmed' ? 'Confirmée' : 'En attente');
+        const status = calendarElement('span', 'status' + (item.status === 'confirmed' ? ' ok' : item.status === 'rejected' ? ' rejected' : ''),
+          item.status === 'confirmed' ? 'Confirmée' : item.status === 'rejected' ? 'Refusée' : 'En attente');
         row.append(detail, status);
         return row;
       };
@@ -355,7 +355,7 @@
   function renderAdminRequests() {
     const list = $('admin-request-list');
     list.replaceChildren();
-    const pending = reservations.filter(item => item.status !== 'confirmed')
+    const pending = reservations.filter(item => item.status !== 'confirmed' && item.status !== 'rejected')
       .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
     $('admin-request-count').textContent = pending.length + ' demande' + (pending.length > 1 ? 's' : '');
     if (!pending.length) {
@@ -366,10 +366,23 @@
       const row = calendarElement('div', 'request');
       const detail = document.createElement('div');
       const date = parseDate(item.date);
-      detail.append(calendarElement('strong', '', (item.creator || 'Pilote') + ' · ' + item.zone),
+      detail.append(calendarElement('strong', '', (item.creator || 'Pilote') + ' · ' + (item.company || 'Société non renseignée')),
+        calendarElement('span', 'small', 'Zone de vol : ' + item.zone),
         calendarElement('span', 'small', (date ? reservationDate(date) : item.date) + ' · ' +
-          item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol') +
-          (item.machineModel || item.machineKind ? ' · ' + (item.machineModel || item.machineKind) : '')));
+          item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol')),
+        calendarElement('span', 'small', 'Type de machine : ' +
+          ([item.machineBrand, item.machineModel].filter(Boolean).join(' · ') || item.machineKind || 'Non renseigné')));
+      const actions = calendarElement('div', 'admin-request-actions');
+      const refuse = calendarElement('button', 'admin-refuse-button', 'Refuser la demande');
+      refuse.type = 'button';
+      refuse.onclick = () => {
+        item.status = 'rejected';
+        saveReservations();
+        renderAdminRequests();
+        renderCalendar();
+        renderSavedRequests();
+        notify('Demande refusée pour ' + item.zone);
+      };
       const approve = calendarElement('button', 'admin-validate-button', 'Valider la demande');
       approve.type = 'button';
       approve.onclick = () => {
@@ -380,7 +393,8 @@
         renderSavedRequests();
         notify('Demande validée pour ' + item.zone);
       };
-      row.append(detail, approve);
+      actions.append(refuse, approve);
+      row.append(detail, actions);
       list.append(row);
     });
   }
@@ -1136,7 +1150,7 @@
       notify('Choisissez une date et un horaire entre 08:00 et 19:00');
       return;
     }
-    if (reservations.some(item => item.zone === zone && item.date === date && item.start < end && item.end > start)) {
+    if (reservations.some(item => item.status !== 'rejected' && item.zone === zone && item.date === date && item.start < end && item.end > start)) {
       notify('Ce créneau est déjà demandé pour cette zone');
       return;
     }
@@ -1146,6 +1160,7 @@
       machineModel: drone.model, droneClass: drone.droneClass,
       weightGrams: drone.weightGrams,
       creator: root.querySelector('.pilot strong')?.textContent.trim() || 'Pilote',
+      company: $('profile-company').value.trim(),
       status: 'pending'
     });
     saveReservations();
