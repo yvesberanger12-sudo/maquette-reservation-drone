@@ -41,6 +41,12 @@
     #drone-booking-mock .leaflet-overlay-pane path.aerozone-hover-zone{transform-box:fill-box;transform-origin:center;transition:transform .18s ease,filter .18s ease}
     #drone-booking-mock .leaflet-overlay-pane path.aerozone-hover-zone:hover{transform:scale(1.025);filter:brightness(1.18)}
     @media(prefers-reduced-motion:reduce){#drone-booking-mock .leaflet-overlay-pane path.aerozone-hover-zone{transition:none}}
+    #drone-booking-mock .availability-heading{flex-wrap:wrap}
+    #drone-booking-mock .availability-meta{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+    #drone-booking-mock .availability-legend{display:flex;align-items:center;gap:10px;margin:0;color:#fff;font-size:11px}
+    #drone-booking-mock .availability-legend span{white-space:nowrap}
+    #drone-booking-mock .availability-legend i{width:10px;height:10px;border:1px solid #ffffff70}
+    @media(max-width:640px){#drone-booking-mock .availability-meta{justify-content:flex-start;gap:8px 12px}#drone-booking-mock .availability-legend{gap:8px}}
   </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
   <div class="shell">
@@ -60,8 +66,7 @@
       <div class="layout">
         <section class="panel dashboard-card booking-main-card"><div class="dashboard-heading"><h2>Carte de l’espace de vol</h2><span class="small">LFR 333 · Hauteur maximum 120 m</span></div><div class="card-body">
           <div id="site-map-home"><div class="map" id="site-map" aria-label="Carte du Centre d Essais en Vol de Brétigny sur Orge"></div></div>
-          <div class="legend"><span><i style="--sw:#72bb9c"></i>Disponible</span><span><i style="--sw:#e3ad58"></i>Occupée</span><span><i style="--sw:#79a9d7"></i>Réservée</span></div>
-          </div><div class="dashboard-heading availability-heading"><h2 id="availability-title">Disponibilités</h2><span class="small" id="calendar-week-label">Semaine 39</span></div><div class="card-body">
+          </div><div class="dashboard-heading availability-heading"><h2 id="availability-title">Disponibilités</h2><div class="availability-meta"><span class="small" id="calendar-week-label">Semaine 39</span><div class="legend availability-legend" aria-label="Légende des disponibilités"><span><i style="--sw:#72bb9c"></i>Disponible</span><span><i style="--sw:#e3ad58"></i>Occupée</span><span><i style="--sw:#79a9d7"></i>Réservée</span></div></div></div><div class="card-body">
           <div class="calendar-toolbar"><div class="calendar-navigation"><button id="calendar-prev" type="button" aria-label="Période précédente">‹</button><input id="calendar-date" type="date" aria-label="Date du calendrier"><button id="calendar-today" type="button">Aujourd’hui</button><button id="calendar-next" type="button" aria-label="Période suivante">›</button></div><div class="calendar-views" role="group" aria-label="Vue du calendrier"><button type="button" data-calendar-view="day">Jour</button><button type="button" data-calendar-view="week">Semaine</button><button type="button" data-calendar-view="month">Mois</button></div></div>
           <p class="calendar-hint">Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.</p><div class="calendar-scroller"><div id="booking-calendar" aria-live="polite"></div></div></div>
         </section>
