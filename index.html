@@ -1,4 +1,4 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AERO ZONE - Maquette de réservation drone</title></head><body style="margin:0;background:#f4f7f9"><div id="drone-booking-mock" aria-label="Maquette de réservation d'espace de vol drone">
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AERO ZONE</title></head><body style="margin:0"><div id="drone-booking-mock" aria-label="Maquette de réservation d'espace de vol drone">
   <style>
     body{background:#102f42!important}
     #drone-booking-mock{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:light-dark(#152432,#e7eef5);--ink:light-dark(#152432,#e7eef5);--muted:light-dark(#647384,#9dacbc);--canvas:light-dark(#f4f7f9,#111b25);--surface:light-dark(#fff,#192633);--soft:light-dark(#eaf1f5,#22313e);--line:light-dark(#d9e2e8,#334657);--accent:light-dark(#166c8b,#66c6e8);--accent-deep:light-dark(#114a64,#9bdcff);--success:light-dark(#1f7a56,#74d8a9);--warning:light-dark(#a46009,#f0bc61);--danger:light-dark(#ae3d46,#ff9aa1);background:var(--canvas);border-radius:18px;overflow:hidden;box-shadow:0 18px 45px light-dark(#b7c3cc88,#00000055);min-height:680px}
@@ -54,7 +54,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=stable-20260922-2"></script>
+  <script src="app.js?v=stable-20260922-3"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
