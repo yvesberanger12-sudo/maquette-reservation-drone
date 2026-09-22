@@ -28,6 +28,10 @@
     #drone-booking-mock .pilot-company{margin:3px 0 5px}
     #drone-booking-mock .admin-validate-button{align-self:center;margin:0;border:0;border-radius:8px;background:#287852;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
     #drone-booking-mock .admin-validate-button:hover{background:#1e6544}
+    #drone-booking-mock .admin-request-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    #drone-booking-mock .admin-refuse-button{margin:0;border:0;border-radius:8px;background:#b43838;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+    #drone-booking-mock .admin-refuse-button:hover{background:#942b2b}
+    #drone-booking-mock .status.rejected{background:#fbe3e3;color:#a62929}
     @media(max-width:640px){#drone-booking-mock .admin-request-list .request{grid-template-columns:1fr}#drone-booking-mock .admin-validate-button{justify-self:start}}
     #drone-booking-mock .drone-section{display:grid;gap:11px;margin-top:8px}
     #drone-booking-mock .drone-section .panelhead{margin:0}
@@ -97,7 +101,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=clients-demo-20260922-1"></script>
+  <script src="app.js?v=request-refusal-20260922-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
