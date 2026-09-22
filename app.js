@@ -8,6 +8,8 @@
   const storageKey = 'aerozone-zones';
   const backupKey = 'aerozone-zones-backup';
   const reservationKey = 'aerozone-calendar-reservations';
+  const clientKey = 'aerozone-demo-clients';
+  const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
   const center = [48.5951055, 2.3212347];
   const palette = ['#166c8b', '#c06c84', '#bc7c18', '#39855b', '#6b5cc7', '#b2519b'];
   const zones = L.featureGroup();
@@ -32,6 +34,7 @@
   let profileDrones = [];
   const mirrorMaps = new Map();
   const reservations = readReservations();
+  const clients = readClients();
   let calendarView = 'day';
   let calendarDate = parseDate($('booking-date').value) || new Date();
 
@@ -118,6 +121,21 @@
   function saveReservations() {
     try { localStorage.setItem(reservationKey, JSON.stringify(reservations)); }
     catch { notify('Impossible d’enregistrer la réservation dans ce navigateur'); }
+  }
+
+  function readClients() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(clientKey) || '[]');
+      return Array.isArray(saved) ? saved.filter(client =>
+        client && typeof client.email === 'string' && typeof client.name === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveClients() {
+    try { localStorage.setItem(clientKey, JSON.stringify(clients)); }
+    catch { notify('Impossible d’enregistrer les clients dans ce navigateur'); }
   }
 
   function parseDate(value) {
@@ -363,6 +381,35 @@
         notify('Demande validée pour ' + item.zone);
       };
       row.append(detail, approve);
+      list.append(row);
+    });
+  }
+
+  function renderClients() {
+    const list = $('client-list');
+    list.replaceChildren();
+    $('client-count').textContent = clients.length + ' client' + (clients.length > 1 ? 's' : '');
+    if (!clients.length) {
+      list.append(calendarElement('p', 'empty', 'Aucun client créé dans ce navigateur.'));
+      return;
+    }
+    const invitationUrl = new URL(window.location.href);
+    invitationUrl.search = '?invitation=1';
+    invitationUrl.hash = '';
+    clients.forEach(client => {
+      const row = calendarElement('div', 'admin-client-row');
+      const detail = document.createElement('div');
+      detail.append(calendarElement('strong', '', [client.firstname, client.name].filter(Boolean).join(' ')),
+        calendarElement('span', 'small', [client.company, client.email].filter(Boolean).join(' · ')));
+      const draft = document.createElement('a');
+      draft.textContent = 'Préparer l’invitation';
+      draft.href = 'mailto:' + encodeURIComponent(client.email) +
+        '?subject=' + encodeURIComponent('Invitation à compléter votre profil AERO ZONE') +
+        '&body=' + encodeURIComponent('Bonjour ' + (client.firstname || '') +
+          ',\n\nVoici le lien pour compléter votre profil et choisir votre code de démonstration :\n' +
+          invitationUrl.href + '\n\nCette invitation concerne uniquement une maquette.\n');
+      draft.onclick = () => notify('Un brouillon s’ouvre : envoyez-le depuis votre messagerie.');
+      row.append(detail, draft);
       list.append(row);
     });
   }
@@ -629,11 +676,15 @@
 
   function setAdminSection(section) {
     const validation = section === 'validation';
-    $('admin-map-panel').hidden = validation;
+    const clientSection = section === 'clients';
+    $('admin-map-panel').hidden = validation || clientSection;
     $('admin-validation').hidden = !validation;
-    $('admin-map-open').classList.toggle('active', !validation);
+    $('admin-clients').hidden = !clientSection;
+    $('admin-map-open').classList.toggle('active', !validation && !clientSection);
     $('admin-validation-open').classList.toggle('active', validation);
+    $('admin-clients-open').classList.toggle('active', clientSection);
     if (validation) renderAdminRequests();
+    else if (clientSection) renderClients();
     else requestAnimationFrame(() => map.invalidateSize());
   }
 
@@ -692,7 +743,7 @@
       }
       adminAuthenticated = true;
     }
-    if (activeView === 'admin' && section === 'validation') {
+    if (activeView === 'admin' && section !== 'map') {
       clearEditing();
       saveZones();
     }
@@ -871,6 +922,16 @@
   }
 
   function loadProfile() {
+    if (inviteMode) {
+      for (const id of ['profile-name', 'profile-firstname', 'profile-company', 'profile-email'])
+        $(id).value = '';
+      $('profile-role').value = 'Pilote opérateur';
+      root.querySelectorAll('input[name="licence"]').forEach(input => { input.checked = false; });
+      profileDrones = [];
+      renderDroneCards([]);
+      syncBookingDrones([]);
+      return;
+    }
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem('aerozone-profile') || 'null'); } catch {}
     if (!saved) {
@@ -909,9 +970,28 @@
   $('admin-nav').onclick = () => openAdmin('map');
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
+  $('admin-clients-open').onclick = () => openAdmin('clients');
   $('exit-admin').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
   $('profile-close').onclick = () => setView('booking');
+  $('client-form').onsubmit = event => {
+    event.preventDefault();
+    const email = $('client-email').value.trim().toLowerCase();
+    if (clients.some(client => client.email.toLowerCase() === email)) {
+      notify('Cette adresse e-mail figure déjà dans la liste.');
+      return;
+    }
+    clients.push({
+      id: 'client-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+      name: $('client-name').value.trim(),
+      firstname: $('client-firstname').value.trim(),
+      company: $('client-company').value.trim(), email
+    });
+    saveClients();
+    renderClients();
+    $('client-form').reset();
+    notify('Client ajouté. Préparez puis envoyez son invitation par e-mail.');
+  };
   $('add-profile-drone').onclick = () => {
     const card = addDroneCard();
     card.querySelector('[data-drone-field="model"]').focus();
@@ -1100,6 +1180,29 @@
       licences: [...root.querySelectorAll('input[name="licence"]:checked')].map(input => input.value),
       drones
     };
+    if (inviteMode) {
+      const code = $('invite-code').value;
+      if (code.length < 6 || code !== $('invite-code-confirm').value) {
+        notify('Le code doit contenir au moins 6 caractères et être identique dans les deux champs.');
+        return;
+      }
+      try {
+        localStorage.setItem('aerozone-demo-invite-profile', JSON.stringify(profile));
+        localStorage.setItem('aerozone-demo-invite-complete', 'true');
+      } catch {
+        notify('Impossible d’enregistrer ce profil dans ce navigateur.');
+        return;
+      }
+      $('invite-code').value = '';
+      $('invite-code-confirm').value = '';
+      $('invite-code-fields').hidden = true;
+      $('invite-intro').textContent = 'Profil de démonstration enregistré dans ce navigateur. Le code n’est pas conservé et ne permet pas de se connecter.';
+      const saveButton = $('profile-form').querySelector('button[type="submit"]');
+      saveButton.disabled = true;
+      saveButton.textContent = 'Profil enregistré';
+      notify('Profil de démonstration enregistré.');
+      return;
+    }
     localStorage.setItem('aerozone-profile', JSON.stringify(profile));
     root.querySelector('.pilot strong').textContent =
       [profile.firstname, profile.name].filter(Boolean).join(' ');
@@ -1111,8 +1214,16 @@
   };
 
   loadProfile();
+  if (inviteMode) {
+    $('invite-intro').hidden = false;
+    $('invite-code-fields').hidden = false;
+    $('invite-code').required = true;
+    $('invite-code-confirm').required = true;
+    setView('profile');
+  }
   renderSavedRequests();
   renderAdminRequests();
+  renderClients();
   const saved = readCollection(storageKey);
   if (saved) saved.features.forEach(addFeature);
   refreshAll();
