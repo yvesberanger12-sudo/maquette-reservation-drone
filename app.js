@@ -307,7 +307,7 @@
     const table = calendarElement('table', 'calendar-table ' + calendarView);
     table.setAttribute('aria-label', calendarView === 'day' ? 'Créneaux par zone et par heure' : 'Créneaux par zone et par jour');
     const head = table.createTHead().insertRow();
-    head.append(calendarElement('th', '', 'Zone'));
+    head.append(calendarElement('th', '', 'Zone de vol'));
     const monday = mondayOf(calendarDate);
     if (calendarView === 'day') {
       for (let hour = 8; hour < 19; hour++) head.append(calendarElement('th', '', hourText(hour)));
