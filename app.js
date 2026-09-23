@@ -457,7 +457,8 @@
       .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
     $('admin-request-count').textContent = pending.length + ' demande' + (pending.length > 1 ? 's' : '');
     if (!pending.length) {
-      list.append(calendarElement('p', 'empty', 'Aucune demande en attente dans ce navigateur.'));
+      list.append(calendarElement('p', 'empty',
+        'Aucune demande en attente ici. Cette maquette ne synchronise pas les autres navigateurs ou appareils.'));
       return;
     }
     pending.forEach(item => {
@@ -1388,7 +1389,7 @@
     renderCalendar();
     renderSavedRequests();
     renderAdminRequests();
-    notify('Demande envoyée pour ' + zone);
+    notify('Demande enregistrée pour ' + zone + ' dans ce navigateur.');
   };
 
   $('profile-form').onsubmit = event => {
