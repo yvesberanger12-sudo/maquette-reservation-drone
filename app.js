@@ -626,6 +626,14 @@
     });
   }
 
+  function syncBookingSubmitState() {
+    const button = $('booking-form').querySelector('button[type="submit"]');
+    button.disabled = $('zone-select').disabled || $('flight-machine-kind').disabled;
+    button.title = $('flight-machine-kind').disabled ?
+      'Ajoutez un drone dans votre profil avant de faire une demande.' :
+      $('zone-select').disabled ? 'Aucune zone de vol disponible.' : '';
+  }
+
   function refreshZoneSelect() {
     const select = $('zone-select');
     const previous = select.value;
@@ -636,13 +644,13 @@
       option.disabled = true;
       select.add(option);
       select.disabled = true;
-      $('booking-form').querySelector('button[type="submit"]').disabled = true;
+      syncBookingSubmitState();
       $('zone-label').textContent = 'Aucune zone';
       selectedZone = '';
       return;
     }
     select.disabled = false;
-    $('booking-form').querySelector('button[type="submit"]').disabled = false;
+    syncBookingSubmitState();
     flights.forEach(layer => {
       const name = layer.feature.properties.name || 'Zone sans nom';
       select.add(new Option(name, name));
@@ -1127,6 +1135,8 @@
     if (!select.options.length) select.add(new Option('Aucun drone enregistré', ''));
     select.disabled = !drones.some(drone => drone.model?.trim());
     $('machine-help').hidden = !select.disabled;
+    $('booking-profile-link').hidden = !select.disabled;
+    syncBookingSubmitState();
     if ([...select.options].some(option => option.value === previous)) select.value = previous;
   }
 
@@ -1205,6 +1215,7 @@
   $('admin-clients-open').onclick = () => openAdmin('clients');
   $('exit-admin').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
+  $('booking-profile-link').onclick = () => setView('profile');
   $('profile-close').onclick = () => setView('booking');
   $('client-form').onsubmit = event => {
     event.preventDefault();
