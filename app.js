@@ -59,7 +59,7 @@
   const mirrorMaps = new Map();
   const reservations = readReservations();
   const clients = readClients();
-  let calendarView = 'day';
+  let calendarView = 'month';
   let calendarDate = parseDate($('booking-date').value) || new Date();
 
   function notify(message) {
@@ -261,12 +261,15 @@
     });
     const names = flightLayers().map(layer => layer.feature.properties.name || 'Zone sans nom');
     const title = $('availability-title');
-    if (calendarView === 'day') title.textContent = 'Disponibilités du ' + shortDate(calendarDate);
+    root.querySelector('.calendar-hint').textContent = calendarView === 'month' ?
+      'Choisissez un jour pour afficher les créneaux de 08:00 à 19:00.' :
+      'Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.';
+    if (calendarView === 'day') title.textContent = 'Calendrier · ' + shortDate(calendarDate);
     if (calendarView === 'week') {
       const monday = mondayOf(calendarDate);
-      title.textContent = 'Semaine du ' + shortDate(monday) + ' au ' + shortDate(dateAfter(monday, 6));
+      title.textContent = 'Calendrier · semaine du ' + shortDate(monday) + ' au ' + shortDate(dateAfter(monday, 6));
     }
-    if (calendarView === 'month') title.textContent = 'Disponibilités · ' +
+    if (calendarView === 'month') title.textContent = 'Calendrier des vols · ' +
       new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(calendarDate);
     if (!names.length) {
       target.append(calendarElement('p', 'calendar-empty', 'Aucune zone de vol disponible. Créez une zone dans la partie administrateur.'));
