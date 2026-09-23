@@ -88,6 +88,8 @@
     #drone-booking-mock .admin-flight-status{align-self:start;border-radius:99px;padding:5px 9px;background:light-dark(#dbf2e7,#1e483a);color:var(--success);font-size:11px;font-weight:700;white-space:nowrap}
     #drone-booking-mock #admin-active-flight-count{color:#fff}
     @media(max-width:640px){#drone-booking-mock .pilot{display:block;margin-top:12px;padding-top:12px}#drone-booking-mock .pilot-planned{margin-top:9px;padding-top:9px}}
+    #drone-booking-mock .booking-profile-link{justify-self:start;border:1px solid var(--accent);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--accent-deep);font-size:12px;font-weight:700;cursor:pointer}
+    #drone-booking-mock .primary:disabled{opacity:.55;cursor:not-allowed}
   </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
   <div class="shell">
@@ -113,7 +115,7 @@
         </section>
         <aside>
           <section class="panel dashboard-card booking-side-card"><div class="dashboard-heading"><h2>Nouvelle demande</h2><span class="small" id="zone-label">Zone Alpha</span></div><div class="card-body">
-            <form id="booking-form" class="formgrid"><label>Zone<select id="zone-select"><option>Zone Alpha</option><option>Zone Bravo</option><option>Zone Charlie</option></select></label><label>Objet du vol<select id="flight-purpose"><option>Entraînement</option><option>Prise de vues</option><option>Inspection</option><option>Démonstration</option><option>Validation machine</option></select></label><label>Type de machine<select id="flight-machine-kind" aria-describedby="machine-help"></select><span class="small" id="machine-help" hidden>Ajoutez d’abord un drone dans Mon profil adhérant.</span></label><label>Date<input id="booking-date" type="date" value="2026-09-24"></label><div class="two"><label>Début<select id="start"><option>09:00</option><option>11:00</option><option selected>14:00</option><option>15:00</option></select></label><label>Fin<select id="end"><option>10:00</option><option>12:00</option><option selected>15:00</option><option>16:00</option></select></label></div><button class="primary" type="submit">Envoyer la demande</button></form></div>
+            <form id="booking-form" class="formgrid"><label>Zone<select id="zone-select"><option>Zone Alpha</option><option>Zone Bravo</option><option>Zone Charlie</option></select></label><label>Objet du vol<select id="flight-purpose"><option>Entraînement</option><option>Prise de vues</option><option>Inspection</option><option>Démonstration</option><option>Validation machine</option></select></label><label>Type de machine<select id="flight-machine-kind" aria-describedby="machine-help"></select><span class="small" id="machine-help" hidden>Ajoutez d’abord un drone dans Mon profil adhérant.</span></label><button class="booking-profile-link" id="booking-profile-link" type="button" hidden>Renseigner un drone dans mon profil</button><label>Date<input id="booking-date" type="date" value="2026-09-24"></label><div class="two"><label>Début<select id="start"><option>09:00</option><option>11:00</option><option selected>14:00</option><option>15:00</option></select></label><label>Fin<select id="end"><option>10:00</option><option>12:00</option><option selected>15:00</option><option>16:00</option></select></label></div><button class="primary" type="submit">Envoyer la demande</button></form></div>
           </section>
           <section class="panel requests dashboard-card booking-side-card" id="reservations-panel"><div class="dashboard-heading"><h2>Mes réservations</h2><span class="small">Aujourd’hui et à venir</span></div><div class="card-body"><h3 class="small">En cours</h3><div class="request"><div><strong>Zone Alpha - aujourd’hui</strong><span class="small">09:00 à 10:00 · Entraînement</span></div><span class="status ok">En cours</span></div><h3 class="small" style="margin-top:17px">À venir</h3><div id="my-requests"></div></div></section>
           <select id="zone-kind" class="zone-kind-input" aria-hidden="true"><option value="main">Zone principale</option><option value="sub">Zone de vol</option></select>
@@ -121,7 +123,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=local-booking-clarity-20260923-1"></script>
+  <script src="app.js?v=booking-guard-20260923-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
