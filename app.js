@@ -376,9 +376,83 @@
     }
   }
 
+  function reservationCompany(item) {
+    const name = item.creator || 'Pilote';
+    const normalizedName = value => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('fr-FR');
+    let savedProfile = null;
+    try { savedProfile = JSON.parse(localStorage.getItem('aerozone-profile') || 'null'); } catch {}
+    const profileName = [savedProfile?.firstname, savedProfile?.name].filter(Boolean).join(' ');
+    const profileMatches = item.creatorEmail
+      ? item.creatorEmail.trim().toLowerCase() === String(savedProfile?.email || '').trim().toLowerCase()
+      : normalizedName(name) === normalizedName(profileName);
+    const profileCompany = profileMatches ? String(savedProfile?.company || '').trim() : '';
+    const matchingClients = clients.filter(client =>
+      item.creatorEmail
+        ? client.email.toLowerCase() === item.creatorEmail.toLowerCase()
+        : [client.firstname, client.name].filter(Boolean).join(' ').toLocaleLowerCase('fr-FR') === name.toLocaleLowerCase('fr-FR'));
+    return profileCompany || (matchingClients.length === 1 && matchingClients[0].company) ||
+      item.company || 'Société non renseignée';
+  }
+
+  function renderAdminActiveFlights() {
+    const list = $('admin-active-flight-list');
+    list.replaceChildren();
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
+    const active = reservations.filter(item =>
+      item.status === 'confirmed' && item.date === today && item.flightStartValidatedAt);
+    if (localStorage.getItem(flightStartStorageKey()) === '1') {
+      const drone = profileDrones[0] || {};
+      active.push({
+        demo: true, date: today, zone: 'Zone Bravo', start: '10:00', end: '11:00',
+        purpose: 'Prise de vues', creator: root.querySelector('.pilot strong')?.textContent.trim() || 'Pilote',
+        creatorEmail: $('profile-email').value.trim(), company: $('profile-company').value.trim(),
+        machineBrand: drone.brand, machineModel: drone.model, machineKind: drone.machineKind,
+        droneClass: drone.droneClass, weightGrams: drone.weightGrams
+      });
+    }
+    active.sort((a, b) => a.start.localeCompare(b.start));
+    $('admin-active-flight-count').textContent = active.length + ' vol' + (active.length > 1 ? 's' : '');
+    if (!active.length) {
+      list.append(calendarElement('p', 'empty', 'Aucun début de vol validé aujourd’hui dans ce navigateur.'));
+      return;
+    }
+    active.forEach(item => {
+      const row = calendarElement('div', 'request');
+      const detail = document.createElement('div');
+      const summary = calendarElement('div', 'admin-request-summary');
+      summary.append(calendarElement('strong', '', item.creator || 'Pilote'),
+        document.createTextNode(' - ' + reservationCompany(item) + ' - Zone de vol : ' + item.zone));
+      const date = parseDate(item.date);
+      const machine = [item.machineBrand, item.machineModel].filter(Boolean).join(' · ') ||
+        item.machineKind || 'Non renseigné';
+      const details = calendarElement('span', 'small admin-request-detail');
+      const parts = [
+        ['Date :', date ? reservationDate(date) : item.date],
+        ['Heure :', item.start + ' à ' + item.end],
+        ['Objet du vol :', item.purpose || 'Vol'],
+        ['Type de machine :', machine],
+        ['Zone principale :', 'LFR 333 · hauteur maximum 120 m']
+      ];
+      if (item.droneClass) parts.push(['Classe :', item.droneClass]);
+      if (item.weightGrams) parts.push(['Poids :', item.weightGrams + ' g']);
+      parts.forEach(([label, value], index) => {
+        if (index) details.append(document.createTextNode(' - '));
+        details.append(calendarElement('strong', '', label), document.createTextNode(' ' + value));
+      });
+      const validated = calendarElement('span', 'small admin-request-detail',
+        item.demo ? 'Exemple de maquette : validation locale, sans réservation associée.' :
+          'Début validé par le client' + (item.flightStartValidatedAt ?
+            ' à ' + new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(new Date(item.flightStartValidatedAt)) : '') + '.');
+      detail.append(summary, details, validated);
+      row.append(detail, calendarElement('span', 'admin-flight-status', item.demo ? 'Démo validée' : 'Début validé'));
+      list.append(row);
+    });
+  }
+
   function renderAdminRequests() {
     const list = $('admin-request-list');
     list.replaceChildren();
+    renderAdminActiveFlights();
     const pending = reservations.filter(item => item.status !== 'confirmed' && item.status !== 'rejected')
       .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
     $('admin-request-count').textContent = pending.length + ' demande' + (pending.length > 1 ? 's' : '');
@@ -391,20 +465,7 @@
       const detail = document.createElement('div');
       const date = parseDate(item.date);
       const name = item.creator || 'Pilote';
-      const normalizedName = value => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('fr-FR');
-      let savedProfile = null;
-      try { savedProfile = JSON.parse(localStorage.getItem('aerozone-profile') || 'null'); } catch {}
-      const profileName = [savedProfile?.firstname, savedProfile?.name].filter(Boolean).join(' ');
-      const profileMatches = item.creatorEmail
-        ? item.creatorEmail.trim().toLowerCase() === String(savedProfile?.email || '').trim().toLowerCase()
-        : normalizedName(name) === normalizedName(profileName);
-      const profileCompany = profileMatches ? String(savedProfile?.company || '').trim() : '';
-      const matchingClients = clients.filter(client =>
-        item.creatorEmail
-          ? client.email.toLowerCase() === item.creatorEmail.toLowerCase()
-          : [client.firstname, client.name].filter(Boolean).join(' ').toLocaleLowerCase('fr-FR') === name.toLocaleLowerCase('fr-FR'));
-      const company = profileCompany || (matchingClients.length === 1 && matchingClients[0].company) ||
-        item.company || 'Société non renseignée';
+      const company = reservationCompany(item);
       const firstLine = calendarElement('div', 'admin-request-summary');
       firstLine.append(calendarElement('strong', '', name),
         document.createTextNode(' - ' + company + ' - Zone de vol : ' + item.zone));
@@ -741,6 +802,7 @@
     const clientSection = section === 'clients';
     $('admin-map-panel').hidden = validation || clientSection;
     $('admin-validation').hidden = !validation;
+    $('admin-active-flights').hidden = !validation;
     $('admin-clients').hidden = !clientSection;
     $('admin-map-open').classList.toggle('active', !validation && !clientSection);
     $('admin-validation-open').classList.toggle('active', validation);
@@ -805,7 +867,24 @@
     return 'aerozone-demo-flight-start-' + day;
   }
 
+  function flightStartCandidate() {
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
+    const confirmed = reservations.filter(item => item.status === 'confirmed' && item.date === today)
+      .sort((a, b) => a.start.localeCompare(b.start));
+    return confirmed.find(item => !item.flightStartValidatedAt) || confirmed[0] || null;
+  }
+
   function renderFlightStartValidation() {
+    const candidate = flightStartCandidate();
+    if (candidate) {
+      const validated = Boolean(candidate.flightStartValidatedAt);
+      $('flight-start-status').textContent = candidate.zone + (validated ?
+        ' · début des vols validé par le client.' : ' · début des vols à confirmer.');
+      $('validate-flight-start').textContent = validated ?
+        'Début des vols validé' : 'Valider le début des vols';
+      $('validate-flight-start').disabled = validated;
+      return;
+    }
     const validated = localStorage.getItem(flightStartStorageKey()) === '1';
     $('flight-start-status').textContent = validated ?
       'Zone Bravo · début des vols validé dans cette maquette.' :
@@ -1097,10 +1176,28 @@
   $('reservations-open').onclick = () => setView('reservations');
   $('flight-dashboard-open').onclick = () => setView('dashboard');
   $('validate-flight-start').onclick = () => {
-    localStorage.setItem(flightStartStorageKey(), '1');
+    const candidate = flightStartCandidate();
+    if (candidate) {
+      candidate.flightStartValidatedAt = new Date().toISOString();
+      saveReservations();
+    } else {
+      localStorage.setItem(flightStartStorageKey(), '1');
+    }
     renderFlightStartValidation();
+    renderAdminActiveFlights();
     notify('Début des vols validé dans cette maquette.');
   };
+  window.addEventListener('storage', event => {
+    if (event.key === reservationKey) {
+      reservations.splice(0, reservations.length, ...readReservations());
+      renderSavedRequests();
+      renderAdminRequests();
+      renderFlightStartValidation();
+    } else if (event.key === flightStartStorageKey()) {
+      renderAdminActiveFlights();
+      renderFlightStartValidation();
+    }
+  });
   $('admin-nav').onclick = () => openAdmin('map');
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
