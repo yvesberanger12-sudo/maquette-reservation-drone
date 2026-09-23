@@ -37,15 +37,16 @@
   const palette = ['#166c8b', '#c06c84', '#bc7c18', '#39855b', '#6b5cc7', '#b2519b'];
   const zones = L.featureGroup();
   const map = L.map('site-map').setView(center, 16);
+  map.attributionControl.setPrefix(false);
   zones.addTo(map);
   const editingPoints = L.featureGroup().addTo(map);
   const street = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">contributeurs OpenStreetMap</a>'
   }).addTo(map);
   const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 19, attribution: 'Tiles &copy; Esri'
   });
-  L.control.layers({ Plan: street, Satellite: satellite }, null, { position: 'topright' }).addTo(map);
+  L.control.layers({ Plan: street, Satellite: satellite }, null, { position: 'bottomleft' }).addTo(map);
   let activeView = 'booking';
   let drawingType = 'sub';
   let hideSubzones = false;
