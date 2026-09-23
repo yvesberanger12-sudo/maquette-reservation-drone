@@ -7,6 +7,29 @@
 
   const storageKey = 'aerozone-zones';
   const backupKey = 'aerozone-zones-backup';
+  const lfr333MigrationKey = 'aerozone-lfr333-main-v1';
+  const lfr333PreviousMainKey = 'aerozone-main-before-lfr333-v1';
+  // Périmètre LF-R 333, AIP France ENR 5.1 (AIRAC 06 août 2026).
+  // L'arc antihoraire de 400 m est échantillonné pour rester modifiable dans Leaflet-Geoman.
+  const lfr333MainFeature = {
+    type: 'Feature',
+    properties: {
+      name: 'LFR 333', type: 'main', source: 'SIA AIP France ENR 5.1',
+      officialVerticalLimit: '500 ft ASFC', siteMaximumHeightMeters: 120
+    },
+    geometry: { type: 'Polygon', coordinates: [[
+      [2.3425, 48.59], [2.341295, 48.5902005], [2.3400657, 48.5902612],
+      [2.3388473, 48.5901373], [2.3377024, 48.589835], [2.3366898, 48.5893699],
+      [2.3358616, 48.5887659], [2.3352603, 48.5880541], [2.3349169, 48.5872709],
+      [2.3348489, 48.5864567], [2.3350598, 48.5856533], [2.3355389, 48.584902],
+      [2.3362615, 48.5842413], [2.3371904, 48.5837053], [2.338278, 48.5833214],
+      [2.3394684, 48.5831094], [2.3407003, 48.5830803], [2.3419106, 48.5832354],
+      [2.3430369, 48.5835668], [2.3440214, 48.5840575], [2.3447222, 48.5847222],
+      [2.3580556, 48.5777778], [2.3675, 48.5675], [2.3475, 48.5591667],
+      [2.2905556, 48.5722222], [2.2902778, 48.5811111], [2.3083333, 48.6008333],
+      [2.3425, 48.5919444], [2.3425, 48.59]
+    ]] }
+  };
   const reservationKey = 'aerozone-calendar-reservations';
   const clientKey = 'aerozone-demo-clients';
   const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
@@ -478,7 +501,7 @@
 
   function styleFor(type, index = 0) {
     if (type === 'main') {
-      return { color: '#8f58e6', weight: 5, opacity: 1, fillColor: '#7240c1', fillOpacity: .16 };
+      return { color: '#d43d3d', weight: 5, opacity: 1, fillColor: '#ef6262', fillOpacity: .28 };
     }
     const color = palette[index % palette.length];
     return { color, weight: 3, opacity: 1, fillColor: color, fillOpacity: .22 };
@@ -1265,30 +1288,19 @@
   renderAdminRequests();
   renderClients();
   const saved = readCollection(storageKey);
-  if (saved) saved.features.forEach(addFeature);
-  refreshAll();
-  if (zones.getLayers().length) map.fitBounds(zones.getBounds(), { padding: [20, 20] });
-
-  if (!saved && !mainLayer()) {
-    fetch('zone-principale.json')
-      .then(response => {
-        if (!response.ok) throw new Error('Import indisponible');
-        return response.json();
-      })
-      .then(imported => {
-        if (mainLayer()) return;
-        addFeature({
-          type: 'Feature',
-          properties: {
-            name: imported.name || 'Zone principale', type: 'main',
-            altitudeMin: imported.geoFence.altitudeMin,
-            altitudeMax: imported.geoFence.altitudeMax
-          },
-          geometry: { type: 'Polygon', coordinates: imported.geoFence.coordinates }
-        });
-        refreshAll();
-        map.fitBounds(zones.getBounds(), { padding: [20, 20] });
-      })
-      .catch(() => notify('Carte principale indisponible'));
+  let displayedFeatures = saved?.features || [];
+  let needsLfr333 = true;
+  try { needsLfr333 = localStorage.getItem(lfr333MigrationKey) !== 'done' || !saved; } catch {}
+  if (needsLfr333) {
+    // Ne remplace que le périmètre principal ; les sous-zones restent intactes.
+    displayedFeatures = [lfr333MainFeature, ...displayedFeatures.filter(feature => feature.properties?.type !== 'main')];
+    try {
+      if (saved) localStorage.setItem(lfr333PreviousMainKey, JSON.stringify(saved));
+      localStorage.setItem(storageKey, JSON.stringify({ type: 'FeatureCollection', features: displayedFeatures }));
+      localStorage.setItem(lfr333MigrationKey, 'done');
+    } catch { notify('Le nouveau périmètre ne peut pas être enregistré dans ce navigateur'); }
   }
+  displayedFeatures.forEach(addFeature);
+  refreshAll();
+  if (mainLayer()) map.fitBounds(mainLayer().getBounds(), { padding: [20, 20] });
 })();
