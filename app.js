@@ -750,6 +750,71 @@
     else requestAnimationFrame(() => map.invalidateSize());
   }
 
+  let weatherLastLoaded = 0;
+  let weatherLoading = false;
+
+  function weatherLabel(code) {
+    if (code === 0) return '☀️ Ciel dégagé';
+    if (code >= 1 && code <= 3) return '⛅ Ciel nuageux';
+    if (code >= 45 && code <= 48) return '🌫️ Brouillard';
+    if (code >= 51 && code <= 67) return '🌧️ Pluie';
+    if (code >= 71 && code <= 77) return '🌨️ Neige';
+    if (code >= 80 && code <= 82) return '🌦️ Averses';
+    if (code >= 95) return '⛈️ Orage';
+    return 'Conditions variables';
+  }
+
+  async function loadDashboardWeather() {
+    if (weatherLoading || Date.now() - weatherLastLoaded < 10 * 60 * 1000) return;
+    weatherLoading = true;
+    const params = new URLSearchParams({
+      latitude: String(center[0]), longitude: String(center[1]),
+      current: 'temperature_2m,weather_code,wind_speed_10m,wind_gusts_10m',
+      timezone: 'Europe/Paris', forecast_days: '1'
+    });
+    try {
+      const response = await fetch('https://api.open-meteo.com/v1/forecast?' + params, {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!response.ok) throw new Error('Météo indisponible');
+      const weather = (await response.json()).current;
+      if (!weather || !Number.isFinite(weather.temperature_2m) ||
+          !Number.isFinite(weather.wind_speed_10m) || !Number.isFinite(weather.wind_gusts_10m)) {
+        throw new Error('Données météo incomplètes');
+      }
+      const time = typeof weather.time === 'string' ? weather.time.slice(11, 16) : '';
+      $('dashboard-weather-condition').textContent =
+        weatherLabel(weather.weather_code) + (time ? ' · ' + time : '');
+      $('dashboard-weather-temp').textContent = Math.round(weather.temperature_2m) + ' °C';
+      $('dashboard-weather-wind').textContent = Math.round(weather.wind_speed_10m) + ' km/h';
+      $('dashboard-weather-gusts').textContent = Math.round(weather.wind_gusts_10m) + ' km/h';
+      $('dashboard-weather-note').textContent =
+        'Estimation météo locale, non suffisante pour autoriser un vol.';
+      weatherLastLoaded = Date.now();
+    } catch {
+      $('dashboard-weather-condition').textContent = 'Météo momentanément indisponible';
+      $('dashboard-weather-note').textContent =
+        'Vérifiez les conditions auprès d’une source météo adaptée avant le vol.';
+    } finally {
+      weatherLoading = false;
+    }
+  }
+
+  function flightStartStorageKey() {
+    const day = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
+    return 'aerozone-demo-flight-start-' + day;
+  }
+
+  function renderFlightStartValidation() {
+    const validated = localStorage.getItem(flightStartStorageKey()) === '1';
+    $('flight-start-status').textContent = validated ?
+      'Zone Bravo · début des vols validé dans cette maquette.' :
+      'Zone Bravo · début à confirmer (maquette).';
+    $('validate-flight-start').textContent = validated ?
+      'Début des vols validé' : 'Valider le début des vols';
+    $('validate-flight-start').disabled = validated;
+  }
+
   function setView(view, adminSection = 'map') {
     if (activeView === 'admin' && view !== 'admin') saveZones();
     clearEditing();
@@ -784,6 +849,8 @@
       dashboardMap ||= createMirrorMap('flight-dashboard-map');
       refreshMirrorMap(dashboardMap);
       requestAnimationFrame(() => dashboardMap.invalidateSize());
+      renderFlightStartValidation();
+      loadDashboardWeather();
     }
     requestAnimationFrame(() => map.invalidateSize());
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1029,6 +1096,11 @@
   $('booking-open').onclick = () => setView('booking');
   $('reservations-open').onclick = () => setView('reservations');
   $('flight-dashboard-open').onclick = () => setView('dashboard');
+  $('validate-flight-start').onclick = () => {
+    localStorage.setItem(flightStartStorageKey(), '1');
+    renderFlightStartValidation();
+    notify('Début des vols validé dans cette maquette.');
+  };
   $('admin-nav').onclick = () => openAdmin('map');
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
