@@ -94,9 +94,36 @@
     @media(max-width:640px){#drone-booking-mock .side{position:static;height:auto;min-height:0;overflow:visible}#drone-booking-mock .pilot{display:block;margin-top:12px;padding-top:12px}#drone-booking-mock .pilot-planned{margin-top:9px;padding-top:9px}}
     #drone-booking-mock .booking-profile-link{justify-self:start;border:1px solid var(--accent);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--accent-deep);font-size:12px;font-weight:700;cursor:pointer}
     #drone-booking-mock .primary:disabled{opacity:.55;cursor:not-allowed}
+    #drone-booking-mock .demo-login{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;min-height:100dvh;padding:24px;background:#102f42;color:#fff}
+    #drone-booking-mock .demo-login-card{width:min(100%,420px);padding:34px;border:1px solid #41657a;border-radius:18px;background:#16394d;box-shadow:0 22px 60px #06192377;text-align:center}
+    #drone-booking-mock .demo-login-logo{display:grid;place-items:center;width:84px;height:84px;margin:0 auto 18px;border:1px solid #557f92;border-radius:22px;background:#22556e}
+    #drone-booking-mock .demo-login-logo svg{width:56px;height:56px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+    #drone-booking-mock .demo-login h1{margin:0;color:#fff;font-size:30px;letter-spacing:.035em}
+    #drone-booking-mock .demo-login-subtitle{margin:4px 0 28px;color:#b8d1dc;font-size:14px}
+    #drone-booking-mock .demo-login-form{display:grid;gap:15px;text-align:left}
+    #drone-booking-mock .demo-login-form label{display:grid;gap:7px;color:#e5f1f5;font-size:13px;font-weight:650}
+    #drone-booking-mock .demo-login-form input{width:100%;min-height:46px;padding:11px 13px;border:1px solid #8caab8;border-radius:9px;background:#fff;color:#173444;font-size:15px}
+    #drone-booking-mock .demo-login-form input:focus{outline:3px solid #74c4e0;outline-offset:2px}
+    #drone-booking-mock .demo-login-submit{min-height:48px;margin-top:5px;border:0;border-radius:9px;background:#2b7894;color:#fff;font-size:15px;font-weight:750;cursor:pointer}
+    #drone-booking-mock .demo-login-submit:hover{background:#368da9}
+    #drone-booking-mock .demo-login-note{margin:20px 0 0;color:#bbd1db;font-size:11px;line-height:1.5}
+    @media(max-width:640px){#drone-booking-mock .demo-login-card{padding:26px 21px}#drone-booking-mock .demo-login h1{font-size:26px}}
   </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
-  <div class="shell">
+  <section class="demo-login" id="demo-login" role="dialog" aria-modal="true" aria-labelledby="demo-login-title">
+    <div class="demo-login-card">
+      <div class="demo-login-logo" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="13" cy="13" r="7"></circle><circle cx="51" cy="13" r="7"></circle><circle cx="13" cy="51" r="7"></circle><circle cx="51" cy="51" r="7"></circle><path d="M18 18 27 27m19-9-9 9M18 46l9-9m19 9-9-9"></path><rect x="26" y="26" width="12" height="12" rx="3"></rect><path d="M29 39v5m6-5v5"></path></svg></div>
+      <h1 id="demo-login-title">AERO ZONE</h1>
+      <p class="demo-login-subtitle">Gestion des espaces drone</p>
+      <form class="demo-login-form" id="demo-login-form">
+        <label for="demo-identifier">Identifiant<input id="demo-identifier" name="identifier" type="text" autocomplete="off" required></label>
+        <label for="demo-password">Mot de passe<input id="demo-password" name="password" type="password" autocomplete="off" required></label>
+        <button class="demo-login-submit" type="submit">Accéder à la maquette</button>
+      </form>
+      <p class="demo-login-note">Connexion de démonstration : aucun compte n’est vérifié. N’utilisez pas votre vrai mot de passe.</p>
+    </div>
+  </section>
+  <div class="shell" inert>
     <aside class="side">
       <div class="brand">AERO ZONE<span>Gestion des espaces drone</span></div>
       <nav class="nav" aria-label="Navigation">
@@ -172,5 +199,30 @@
 </script>
 <script type="text/plain">
   (()=>{const restoreSavedMain=()=>{const feature=window.__aerozoneSavedMain;if(!feature)return;zones.getLayers().filter(layer=>layer.feature?.properties?.type==='main').forEach(layer=>zones.removeLayer(layer));L.geoJSON(feature,{style:item=>zoneStyle(item.properties.type,item.properties.name)}).eachLayer(layer=>zones.addLayer(layer));saveZones();refreshZoneLabels();map.fitBounds(zones.getBounds(),{padding:[20,20]})};setTimeout(restoreSavedMain,900);const vertexMarkers=L.featureGroup().addTo(map),deleteButton=document.getElementById('delete-main-points');function displayDeletableVertices(){vertexMarkers.clearLayers();setSubzonesVisible(false);disableMapEditing();const main=zones.getLayers().find(layer=>layer.feature?.properties?.type==='main');if(!main){notify('Aucune zone principale à modifier');return}const paths=main.getLatLngs(),rings=Array.isArray(paths[0])?paths:[paths];rings.forEach(ring=>{if(!Array.isArray(ring)||ring.length<4)return;ring.forEach((point,index)=>L.circleMarker(point,{radius:8,color:'#fff',weight:2,fillColor:'#d63737',fillOpacity:1}).addTo(vertexMarkers).bindTooltip('Supprimer ce point',{direction:'top'}).on('click',()=>{if(ring.length<=3){notify('Un contour doit conserver au moins trois points');return}ring.splice(index,1);main.setLatLngs(paths);main.feature.geometry=main.toGeoJSON().geometry;saveZones();refreshZoneLabels();displayDeletableVertices();notify('Point supprimé et tracé enregistré')}))});notify('Cliquez sur un point rouge, extérieur ou intérieur, pour le supprimer')}if(deleteButton)deleteButton.onclick=displayDeletableVertices})();
+</script>
+<script>
+  (() => {
+    const gate = document.getElementById('demo-login');
+    const shell = document.querySelector('#drone-booking-mock .shell');
+    const form = document.getElementById('demo-login-form');
+    const password = document.getElementById('demo-password');
+    const enter = () => {
+      password.value = '';
+      gate.hidden = true;
+      shell.inert = false;
+      document.getElementById('booking-open').focus();
+      window.dispatchEvent(new Event('resize'));
+    };
+    if (new URLSearchParams(window.location.search).get('invitation') === '1') {
+      enter();
+      return;
+    }
+    document.getElementById('demo-identifier').focus();
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      enter();
+    });
+  })();
 </script>
 </body></html>
