@@ -58,6 +58,7 @@
   let adminAuthenticated = false;
   let reservationsMap = null;
   let dashboardMap = null;
+  let dashboardResizeObserver = null;
   let feedbackTimer = null;
   let profileDrones = [];
   const mirrorMaps = new Map();
@@ -867,6 +868,18 @@
     return target;
   }
 
+  function fitDashboardMap() {
+    if (!dashboardMap || activeView !== 'dashboard') return;
+    dashboardMap.invalidateSize({ pan: false });
+    const bounds = mainLayer()?.getBounds();
+    if (!bounds?.isValid()) return;
+    const size = dashboardMap.getSize();
+    dashboardMap.fitBounds(bounds, {
+      padding: [Math.round(size.x * 0.045), Math.round(size.y * 0.045)],
+      animate: false
+    });
+  }
+
   function setAdminSection(section) {
     const validation = section === 'validation';
     const clientSection = section === 'clients';
@@ -1044,7 +1057,11 @@
     if (view === 'dashboard') {
       dashboardMap ||= createMirrorMap('flight-dashboard-map');
       refreshMirrorMap(dashboardMap);
-      requestAnimationFrame(() => dashboardMap.invalidateSize());
+      if (!dashboardResizeObserver && window.ResizeObserver) {
+        dashboardResizeObserver = new ResizeObserver(() => requestAnimationFrame(fitDashboardMap));
+        dashboardResizeObserver.observe($('flight-dashboard-map'));
+      }
+      requestAnimationFrame(fitDashboardMap);
       renderFlightStartValidation();
       loadDashboardWeather();
     }
