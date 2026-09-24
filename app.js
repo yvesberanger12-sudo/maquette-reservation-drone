@@ -347,38 +347,48 @@
   function renderSavedRequests() {
     root.querySelectorAll('[data-calendar-reservation]').forEach(node => node.remove());
     root.querySelectorAll('[data-reservation-empty]').forEach(node => node.remove());
-    const sidebar = $('my-requests');
+    const currentList = $('current-requests');
+    const upcomingList = $('my-requests');
     const fullList = root.querySelector('#reservations-view .dashboard-card:last-child .card-body');
     const sorted = [...reservations].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
-    sorted.forEach(item => {
-      const createRow = () => {
-        const row = calendarElement('div', 'request');
-        row.dataset.calendarReservation = 'true';
-        const detail = document.createElement('div');
-        const date = parseDate(item.date);
-        detail.append(calendarElement('strong', '', item.zone + ' - ' + (date ? reservationDate(date) : item.date)),
-          calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' +
-            (item.purpose || 'Vol') +
-            (item.machineModel || item.machineKind ? ' · ' + (item.machineModel || item.machineKind) : '')));
-        const status = calendarElement('span', 'status' + (item.status === 'confirmed' ? ' ok' : item.status === 'rejected' ? ' rejected' : ''),
-          item.status === 'confirmed' ? 'Confirmée' : item.status === 'rejected' ? 'Refusée' : 'En attente');
-        row.append(detail, status);
-        return row;
-      };
-      sidebar.prepend(createRow());
-      fullList?.append(createRow());
+    const nowParis = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).format(new Date());
+    const stillRelevant = item => !item.flightEndedAt && item.date + ' ' + item.end > nowParis;
+    const isCurrent = item => item.status === 'confirmed' && item.flightStartValidatedAt &&
+      item.date + ' ' + item.start <= nowParis && stillRelevant(item);
+    const future = sorted.filter(stillRelevant);
+    const createRow = (item, ongoing = false) => {
+      const row = calendarElement('div', 'request');
+      row.dataset.calendarReservation = 'true';
+      const detail = document.createElement('div');
+      const date = parseDate(item.date);
+      detail.append(calendarElement('strong', '', item.zone + ' - ' + (date ? reservationDate(date) : item.date)),
+        calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' +
+          (item.purpose || 'Vol') +
+          (item.machineModel || item.machineKind ? ' · ' + (item.machineModel || item.machineKind) : '')));
+      const status = calendarElement('span', 'status' + (ongoing || item.status === 'confirmed' ? ' ok' : item.status === 'rejected' ? ' rejected' : ''),
+        ongoing ? 'En cours' : item.status === 'confirmed' ? 'Confirmée' : item.status === 'rejected' ? 'Refusée' : 'En attente');
+      row.append(detail, status);
+      return row;
+    };
+    future.forEach(item => {
+      const ongoing = isCurrent(item);
+      (ongoing ? currentList : upcomingList).append(createRow(item, ongoing));
+      if (!ongoing) fullList?.append(createRow(item));
     });
     const count = root.querySelector('#reservations-view .dashboard-card:last-child .dashboard-heading .small');
-    if (count) count.textContent = reservations.length + ' vol' + (reservations.length > 1 ? 's' : '');
-    if (!sorted.length) {
-      const emptyRow = () => {
-        const node = calendarElement('p', 'empty', 'Aucune réservation à venir.');
-        node.dataset.reservationEmpty = 'true';
-        return node;
-      };
-      sidebar.append(emptyRow());
-      fullList?.append(emptyRow());
-    }
+    const upcomingCount = future.filter(item => !isCurrent(item)).length;
+    if (count) count.textContent = upcomingCount + ' vol' + (upcomingCount > 1 ? 's' : '');
+    const emptyRow = message => {
+      const node = calendarElement('p', 'empty', message);
+      node.dataset.reservationEmpty = 'true';
+      return node;
+    };
+    if (!currentList.children.length) currentList.append(emptyRow('Aucun vol en cours.'));
+    if (!upcomingList.children.length) upcomingList.append(emptyRow('Aucune réservation à venir.'));
+    if (!upcomingCount) fullList?.append(emptyRow('Aucune réservation à venir.'));
   }
 
   function reservationCompany(item) {
@@ -977,6 +987,7 @@
     showSubzones(true);
     activeView = view;
     const booking = view === 'booking';
+    if (booking) renderSavedRequests();
     $('booking-top').hidden = !booking;
     root.querySelector('.layout').hidden = !booking;
     $('reservations-view').hidden = view !== 'reservations';
@@ -1571,6 +1582,12 @@
     setView('profile');
   }
   renderSavedRequests();
+  setInterval(() => {
+    if (document.visibilityState === 'visible') renderSavedRequests();
+  }, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') renderSavedRequests();
+  });
   renderAdminRequests();
   renderClients();
   const saved = readCollection(storageKey);
