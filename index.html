@@ -116,6 +116,8 @@
     #drone-booking-mock .demo-login-submit:hover{background:#368da9}
     #drone-booking-mock .demo-login-note{margin:20px 0 0;color:#bbd1db;font-size:11px;line-height:1.5}
     @media(max-width:640px){#drone-booking-mock .demo-login-card{padding:26px 21px}#drone-booking-mock .demo-login h1{font-size:26px}}
+    /* La colonne bleue suit toute la hauteur de la page ; le profil reste à son pied. */
+    @media(min-width:641px){#drone-booking-mock .side{position:relative;top:auto;height:auto;min-height:100dvh;overflow:visible}}
     /* Sur écran étroit, afficher directement le calendrier avant la carte :
        la carte Leaflet intercepte le défilement et masquait les créneaux. */
     @media(max-width:640px){
