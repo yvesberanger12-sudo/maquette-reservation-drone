@@ -1225,6 +1225,10 @@
       try { saved = JSON.parse(localStorage.getItem('aerozone-profile-backup') || 'null'); } catch {}
     }
     if (!saved) {
+      for (const id of ['profile-name', 'profile-firstname', 'profile-company', 'profile-email'])
+        $(id).value = '';
+      root.querySelector('.pilot strong').textContent = 'Profil non enregistré';
+      $('pilot-company').textContent = 'Aucune société enregistrée';
       renderDroneCards([]);
       syncBookingDrones([]);
       return;
