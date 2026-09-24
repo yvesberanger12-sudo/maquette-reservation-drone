@@ -37,10 +37,10 @@
   const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
   const center = [48.5951055, 2.3212347];
   // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
-  const siteViewZoom = 13;
+  const siteViewZoom = 12.7;
   const palette = ['#166c8b', '#c06c84', '#bc7c18', '#39855b', '#6b5cc7', '#b2519b'];
   const zones = L.featureGroup();
-  const map = L.map('site-map').setView(center, siteViewZoom);
+  const map = L.map('site-map', { zoomSnap: 0.1 }).setView(center, siteViewZoom);
   map.attributionControl.setPrefix(false);
   zones.addTo(map);
   const editingPoints = L.featureGroup().addTo(map);
@@ -854,7 +854,7 @@
   }
 
   function createMirrorMap(id) {
-    const target = L.map(id).setView(siteViewCenter(), siteViewZoom);
+    const target = L.map(id, { zoomSnap: 0.1 }).setView(siteViewCenter(), siteViewZoom);
     const plan = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
     });
