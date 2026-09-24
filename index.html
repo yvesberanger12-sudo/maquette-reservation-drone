@@ -115,6 +115,17 @@
     #drone-booking-mock .demo-login-submit:hover{background:#368da9}
     #drone-booking-mock .demo-login-note{margin:20px 0 0;color:#bbd1db;font-size:11px;line-height:1.5}
     @media(max-width:640px){#drone-booking-mock .demo-login-card{padding:26px 21px}#drone-booking-mock .demo-login h1{font-size:26px}}
+    /* Sur écran étroit, afficher directement le calendrier avant la carte :
+       la carte Leaflet intercepte le défilement et masquait les créneaux. */
+    @media(max-width:640px){
+      #drone-booking-mock .booking-main-card{display:flex;flex-direction:column}
+      #drone-booking-mock .booking-main-card>.availability-heading{order:1}
+      #drone-booking-mock .booking-main-card>.availability-heading+.card-body{order:2}
+      #drone-booking-mock .booking-main-card>.dashboard-heading:first-child{order:3}
+      #drone-booking-mock .booking-main-card>.dashboard-heading:first-child+.card-body{order:4}
+      #drone-booking-mock .calendar-table.day{min-width:810px}
+      #drone-booking-mock .calendar-table th:first-child,#drone-booking-mock .calendar-table td:first-child{width:90px;min-width:90px;max-width:90px}
+    }
   </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
   <section class="demo-login" id="demo-login" role="dialog" aria-modal="true" aria-labelledby="demo-login-title">
@@ -161,7 +172,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=original-calendar-20260923-1"></script>
+  <script src="app.js?v=site-audit-20260924-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
