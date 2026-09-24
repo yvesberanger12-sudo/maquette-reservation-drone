@@ -72,7 +72,7 @@
     feedbackTimer = setTimeout(() => toast.classList.remove('show'), 3000);
   }
 
-  function askUser(title, { initial = '', secret = false, confirmOnly = false } = {}) {
+  function askUser(title, { initial = '', secret = false, confirmOnly = false, validate = null } = {}) {
     return new Promise(resolve => {
       const backdrop = document.createElement('div');
       Object.assign(backdrop.style, {
@@ -92,7 +92,14 @@
       input.type = secret ? 'password' : 'text';
       input.value = initial;
       input.autocomplete = 'off';
+      if (secret) input.setAttribute('aria-label', 'Mot de passe administrateur');
       input.style.cssText = 'display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccd8e0;border-radius:7px;margin-bottom:16px';
+      const error = document.createElement('p');
+      error.id = 'aerozone-modal-error';
+      error.setAttribute('role', 'alert');
+      error.style.cssText = 'margin:0 0 10px;color:#ae2734;font-size:13px;font-weight:700';
+      error.hidden = true;
+      input.setAttribute('aria-describedby', error.id);
       const actions = document.createElement('div');
       actions.style.cssText = 'display:flex;justify-content:flex-end;gap:8px';
       const cancel = document.createElement('button');
@@ -105,7 +112,7 @@
       cancel.style.cssText = 'background:#fff;border:1px solid #ccd8e0;border-radius:7px;padding:9px 14px';
       actions.append(cancel, accept);
       form.append(heading);
-      if (!confirmOnly) form.append(input);
+      if (!confirmOnly) form.append(error, input);
       form.append(actions);
       backdrop.append(form);
       document.body.append(backdrop);
@@ -115,9 +122,24 @@
       };
       cancel.onclick = () => finish(null);
       backdrop.onclick = event => { if (event.target === backdrop) finish(null); };
+      input.oninput = () => {
+        error.hidden = true;
+        input.removeAttribute('aria-invalid');
+      };
       form.onsubmit = event => {
         event.preventDefault();
-        finish(confirmOnly ? true : input.value.trim());
+        if (confirmOnly) return finish(true);
+        const value = input.value.trim();
+        const message = validate?.(value);
+        if (message) {
+          error.textContent = message;
+          error.hidden = false;
+          input.setAttribute('aria-invalid', 'true');
+          input.focus();
+          input.select();
+          return;
+        }
+        finish(value);
       };
       if (!confirmOnly) input.focus();
       else accept.focus();
@@ -1031,12 +1053,11 @@
 
   async function openAdmin(section = 'map') {
     if (!adminAuthenticated) {
-      const entered = await askUser('Accès administrateur', { secret: true });
+      const entered = await askUser('Accès administrateur', {
+        secret: true,
+        validate: value => value && value === getMockPassword() ? '' : 'Mot de passe incorrect'
+      });
       if (entered === null) return;
-      if (entered !== getMockPassword()) {
-        notify('Mot de passe incorrect');
-        return;
-      }
       adminAuthenticated = true;
     }
     if (activeView === 'admin' && section !== 'map') {
