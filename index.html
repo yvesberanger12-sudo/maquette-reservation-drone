@@ -100,6 +100,7 @@
     @media(max-width:900px){#drone-booking-mock .shell{background:linear-gradient(to right,light-dark(#102f42,#0c1720) 180px,var(--canvas) 180px)}}
     @media(max-width:640px){#drone-booking-mock .shell{background:var(--canvas)}}
     #drone-booking-mock .calendar-table td:first-child{text-align:center;vertical-align:middle}
+    #drone-booking-mock #current-requests .request:first-child,#drone-booking-mock #my-requests .request:first-child{border-top:0}
     #drone-booking-mock .calendar-table th:first-child,#drone-booking-mock .calendar-table td:first-child{width:105px;min-width:105px;max-width:105px;text-align:center;vertical-align:middle;white-space:normal;overflow-wrap:anywhere}
     #drone-booking-mock .demo-login{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;min-height:100dvh;padding:24px;background:#102f42;color:#fff}
     #drone-booking-mock .demo-login-card{width:min(100%,420px);padding:34px;border:1px solid #41657a;border-radius:18px;background:#16394d;box-shadow:0 22px 60px #06192377;text-align:center}
@@ -166,13 +167,13 @@
           <section class="panel dashboard-card booking-side-card"><div class="dashboard-heading"><h2>Nouvelle demande</h2><span class="small" id="zone-label">Zone Alpha</span></div><div class="card-body">
             <form id="booking-form" class="formgrid"><label>Zone<select id="zone-select"><option>Zone Alpha</option><option>Zone Bravo</option><option>Zone Charlie</option></select></label><label>Objet du vol<select id="flight-purpose"><option>Entraînement</option><option>Prise de vues</option><option>Inspection</option><option>Démonstration</option><option>Validation machine</option></select></label><label>Type de machine<select id="flight-machine-kind" aria-describedby="machine-help"></select><span class="small" id="machine-help" hidden>Ajoutez d’abord un drone dans Mon profil adhérant.</span></label><button class="booking-profile-link" id="booking-profile-link" type="button" hidden>Renseigner un drone dans mon profil</button><label>Date<input id="booking-date" type="date" value="2026-09-24"></label><div class="two"><label>Début<select id="start"><option>09:00</option><option>11:00</option><option selected>14:00</option><option>15:00</option></select></label><label>Fin<select id="end"><option>10:00</option><option>12:00</option><option selected>15:00</option><option>16:00</option></select></label></div><button class="primary" type="submit">Envoyer la demande</button></form></div>
           </section>
-          <section class="panel requests dashboard-card booking-side-card" id="reservations-panel"><div class="dashboard-heading"><h2>Mes réservations</h2><span class="small">Aujourd’hui et à venir</span></div><div class="card-body"><h3 class="small">En cours</h3><div class="request"><div><strong>Zone Alpha - aujourd’hui</strong><span class="small">09:00 à 10:00 · Entraînement</span></div><span class="status ok">En cours</span></div><h3 class="small" style="margin-top:17px">À venir</h3><div id="my-requests"></div></div></section>
+          <section class="panel requests dashboard-card booking-side-card" id="reservations-panel"><div class="dashboard-heading"><h2>Mes réservations</h2><span class="small">Aujourd’hui et à venir</span></div><div class="card-body"><h3 class="small">En cours</h3><div id="current-requests"></div><h3 class="small" style="margin-top:17px">À venir</h3><div id="my-requests"></div></div></section>
           <select id="zone-kind" class="zone-kind-input" aria-hidden="true"><option value="main">Zone principale</option><option value="sub">Zone de vol</option></select>
         </aside>
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=site-audit-20260924-2"></script>
+  <script src="app.js?v=hide-past-bookings-20260924-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
