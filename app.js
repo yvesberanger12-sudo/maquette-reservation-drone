@@ -1014,6 +1014,7 @@
     root.querySelector('.layout').hidden = !booking;
     $('reservations-view').hidden = view !== 'reservations';
     $('flight-dashboard').hidden = view !== 'dashboard';
+    $('rules-view').hidden = view !== 'rules';
     $('profile-panel').hidden = view !== 'profile';
     $('admin-view').hidden = view !== 'admin';
     $('admin-subnav').hidden = view !== 'admin';
@@ -1023,7 +1024,8 @@
     root.querySelectorAll('.nav button').forEach(button => {
       const name = {
         'booking-open': 'booking', 'reservations-open': 'reservations',
-        'flight-dashboard-open': 'dashboard', 'admin-nav': 'admin'
+        'flight-dashboard-open': 'dashboard', 'admin-nav': 'admin',
+        'rules-open': 'rules'
       }[button.id];
       button.classList.toggle('active', name === view);
     });
@@ -1293,6 +1295,7 @@
   $('booking-open').onclick = () => setView('booking');
   $('reservations-open').onclick = () => setView('reservations');
   $('flight-dashboard-open').onclick = () => setView('dashboard');
+  $('rules-open').onclick = () => setView('rules');
   $('validate-flight-start').onclick = () => {
     const candidate = flightStartCandidate();
     if (candidate) {
