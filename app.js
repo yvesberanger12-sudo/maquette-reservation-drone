@@ -7,6 +7,8 @@
 
   const storageKey = 'aerozone-zones';
   const backupKey = 'aerozone-zones-backup';
+  const zoneHistoryKey = 'aerozone-zones-history-v1';
+  const profileHistoryKey = 'aerozone-profile-history-v1';
   const lfr333MigrationKey = 'aerozone-lfr333-main-v1';
   const lfr333PreviousMainKey = 'aerozone-main-before-lfr333-v1';
   // Périmètre LF-R 333, AIP France ENR 5.1 (AIRAC 06 août 2026).
@@ -547,11 +549,28 @@
     return zones.getLayers().map(layer => layer.toGeoJSON());
   }
 
+  function keepSnapshot(historyKey, raw) {
+    if (!raw) return;
+    try {
+      const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+      const now = Date.now();
+      if (!Array.isArray(history)) return;
+      // Une session de déplacement de sommets produit beaucoup de sauvegardes.
+      // On conserve son état initial sans saturer l'historique.
+      if (history[0] && now - history[0].savedAt < 60000) return;
+      history.unshift({ savedAt: now, value: raw });
+      localStorage.setItem(historyKey, JSON.stringify(history.slice(0, 30)));
+    } catch { /* Le stockage courant reste prioritaire si l'historique est plein. */ }
+  }
+
   function saveZones() {
     try {
       const previous = localStorage.getItem(storageKey);
       const next = JSON.stringify({ type: 'FeatureCollection', features: currentFeatures() });
-      if (previous && previous !== next) localStorage.setItem(backupKey, previous);
+      if (previous && previous !== next) {
+        keepSnapshot(zoneHistoryKey, previous);
+        localStorage.setItem(backupKey, previous);
+      }
       localStorage.setItem(storageKey, next);
       refreshMirrorMaps();
     } catch {
@@ -1203,6 +1222,9 @@
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem('aerozone-profile') || 'null'); } catch {}
     if (!saved) {
+      try { saved = JSON.parse(localStorage.getItem('aerozone-profile-backup') || 'null'); } catch {}
+    }
+    if (!saved) {
       renderDroneCards([]);
       syncBookingDrones([]);
       return;
@@ -1217,7 +1239,7 @@
     root.querySelectorAll('input[name="licence"]').forEach(input => {
       input.checked = (saved.licences || []).includes(input.value);
     });
-    profileDrones = Array.isArray(saved.drones) ? saved.drones.filter(drone =>
+    profileDrones = Array.isArray(saved.drones) && saved.drones.length ? saved.drones.filter(drone =>
       drone && typeof drone.model === 'string').map(drone => ({ ...drone, id: drone.id || newDroneId() })) :
       (saved.machineModel?.trim() ? [{
         id: newDroneId(), machineKind: saved.machineKind || 'Drone',
@@ -1515,7 +1537,18 @@
       notify('Profil de démonstration enregistré.');
       return;
     }
-    localStorage.setItem('aerozone-profile', JSON.stringify(profile));
+    try {
+      const previous = localStorage.getItem('aerozone-profile');
+      const next = JSON.stringify(profile);
+      if (previous && previous !== next) {
+        keepSnapshot(profileHistoryKey, previous);
+        localStorage.setItem('aerozone-profile-backup', previous);
+      }
+      localStorage.setItem('aerozone-profile', next);
+    } catch {
+      notify('Impossible d’enregistrer le profil dans ce navigateur. Aucun drone n’a été modifié.');
+      return;
+    }
     root.querySelector('.pilot strong').textContent =
       [profile.firstname, profile.name].filter(Boolean).join(' ');
     $('pilot-company').textContent = profile.company.trim() || 'Société non renseignée';
@@ -1544,7 +1577,10 @@
     // Ne remplace que le périmètre principal ; les sous-zones restent intactes.
     displayedFeatures = [lfr333MainFeature, ...displayedFeatures.filter(feature => feature.properties?.type !== 'main')];
     try {
-      if (saved) localStorage.setItem(lfr333PreviousMainKey, JSON.stringify(saved));
+      if (saved) {
+        keepSnapshot(zoneHistoryKey, JSON.stringify(saved));
+        localStorage.setItem(lfr333PreviousMainKey, JSON.stringify(saved));
+      }
       localStorage.setItem(storageKey, JSON.stringify({ type: 'FeatureCollection', features: displayedFeatures }));
       localStorage.setItem(lfr333MigrationKey, 'done');
     } catch { notify('Le nouveau périmètre ne peut pas être enregistré dans ce navigateur'); }
