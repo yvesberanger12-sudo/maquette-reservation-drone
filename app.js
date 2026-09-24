@@ -37,7 +37,7 @@
   const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
   const center = [48.5951055, 2.3212347];
   // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
-  const siteViewZoom = 12;
+  const siteViewZoom = 13;
   const palette = ['#166c8b', '#c06c84', '#bc7c18', '#39855b', '#6b5cc7', '#b2519b'];
   const zones = L.featureGroup();
   const map = L.map('site-map').setView(center, siteViewZoom);
