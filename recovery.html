@@ -21,6 +21,11 @@
   <main>
     <h1>Diagnostic des zones AERO ZONE</h1>
     <p>Lecture seule : cette page ne modifie aucun tracé. Les données restent dans ce navigateur.</p>
+    <section>
+      <h2>Sauvegarde complète des données de ce navigateur</h2>
+      <div class="small">Inclut les zones, profils, réservations, clients et sauvegardes AERO ZONE présents ici. Le fichier reste sur votre ordinateur.</div>
+      <button id="download-all" type="button">Télécharger toutes les données AERO ZONE</button>
+    </section>
     <div id="snapshots"></div>
     <p class="small">Pour retrouver des zones créées dans un autre navigateur, ouvrez cette page dans ce même navigateur.</p>
     <a href="./">Retour à la maquette</a>
@@ -28,6 +33,20 @@
   <script>
     (() => {
       const host = document.getElementById('snapshots');
+      document.getElementById('download-all').addEventListener('click', () => {
+        const data = { format: 'aerozone-local-backup-v1', exportedAt: new Date().toISOString(),
+          origin: location.origin, entries: {} };
+        Object.keys(localStorage).filter(key => key.startsWith('aerozone')).sort().forEach(key => {
+          data.entries[key] = localStorage.getItem(key);
+        });
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'aerozone-donnees-navigateur-' + new Date().toISOString().slice(0, 10) + '.json';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
       const names = {
         'aerozone-zones': 'Tracés actuels',
         'aerozone-zones-backup': 'Sauvegarde précédente',
