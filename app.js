@@ -36,9 +36,11 @@
   const clientKey = 'aerozone-demo-clients';
   const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
   const center = [48.5951055, 2.3212347];
+  // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
+  const siteViewZoom = 12;
   const palette = ['#166c8b', '#c06c84', '#bc7c18', '#39855b', '#6b5cc7', '#b2519b'];
   const zones = L.featureGroup();
-  const map = L.map('site-map').setView(center, 16);
+  const map = L.map('site-map').setView(center, siteViewZoom);
   map.attributionControl.setPrefix(false);
   zones.addTo(map);
   const editingPoints = L.featureGroup().addTo(map);
@@ -771,7 +773,7 @@
           if (event.key === 'Escape') cancel.click();
         };
         if (layer.pm) layer.pm.enable();
-        map.fitBounds(layer.getBounds(), { padding: [40, 40] });
+        // La sélection ne modifie pas l'échelle de référence de la carte.
       };
       const remove = document.createElement('button');
       remove.type = 'button';
@@ -822,6 +824,10 @@
     return styleFor(feature.properties.type, Math.max(index, 0));
   }
 
+  function siteViewCenter() {
+    return mainLayer()?.getBounds().getCenter() || L.latLng(center);
+  }
+
   function refreshMirrorMap(target) {
     if (!target) return;
     const old = mirrorMaps.get(target);
@@ -839,7 +845,6 @@
       }
     }).addTo(target);
     mirrorMaps.set(target, overlay);
-    if (overlay.getLayers().length) target.fitBounds(overlay.getBounds(), { padding: [20, 20] });
     target.invalidateSize();
   }
 
@@ -849,7 +854,7 @@
   }
 
   function createMirrorMap(id) {
-    const target = L.map(id).setView(center, 16);
+    const target = L.map(id).setView(siteViewCenter(), siteViewZoom);
     const plan = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
     });
@@ -1485,7 +1490,7 @@
     refreshMainMap();
     renderCalendar();
     const layer = flightLayers().find(item => item.feature.properties.name === selectedZone);
-    if (layer) map.fitBounds(layer.getBounds(), { padding: [40, 40] });
+    // La zone sélectionnée est mise en évidence sans changer le niveau de zoom.
   };
 
   $('booking-form').onsubmit = event => {
@@ -1632,5 +1637,5 @@
   }
   displayedFeatures.forEach(addFeature);
   refreshAll();
-  if (mainLayer()) map.fitBounds(mainLayer().getBounds(), { padding: [20, 20] });
+  map.setView(siteViewCenter(), siteViewZoom);
 })();
