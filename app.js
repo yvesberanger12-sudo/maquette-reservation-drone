@@ -256,6 +256,7 @@
     selectedZone = zone;
     calendarDate = parseDate(date);
     refreshMainMap();
+    focusBookingZone(zone);
     renderCalendar();
     notify(zone + ' · ' + shortDate(calendarDate) + ' · ' + hourText(hour) + ' à ' + hourText(hour + 1));
     if (window.innerWidth < 900) $('booking-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -713,6 +714,7 @@
 
   function refreshMainMap() {
     const flights = flightLayers();
+    let selectedLayer = null;
     zones.eachLayer(layer => {
       const type = layer.feature?.properties?.type;
       if (type === 'main') {
@@ -725,17 +727,32 @@
       layer.unbindTooltip();
       const hidden = hideSubzones;
       const highlighted = activeView === 'booking' && layer.feature.properties.name === selectedZone;
+      if (highlighted) selectedLayer = layer;
       layer.setStyle(hidden
         ? { ...styleFor('sub', index), opacity: 0, fillOpacity: 0 }
         : highlighted
           ? { color: '#ffbd3a', weight: 5, opacity: 1, fillColor: '#ffbd3a', fillOpacity: .42 }
-          : styleFor('sub', index));
+          : activeView === 'booking' && selectedZone
+            ? { ...styleFor('sub', index), opacity: .5, fillOpacity: .1 }
+            : styleFor('sub', index));
       if (layer.getElement()) layer.getElement().style.pointerEvents = hidden ? 'none' : '';
       if (!hidden) layer.bindTooltip('SZ : ' + (layer.feature.properties.name || 'Sans nom'), {
         permanent: true, direction: 'center',
-        className: 'aerozone-zone-label zone-label-' + (index % palette.length)
+        className: 'aerozone-zone-label zone-label-' + (index % palette.length) +
+          (highlighted ? ' zone-label-selected' : '')
       });
     });
+    selectedLayer?.bringToFront();
+  }
+
+  function focusBookingZone(name) {
+    if (activeView !== 'booking' || !name) return;
+    const layer = flightLayers().find(item => item.feature.properties.name === name);
+    if (!layer) return;
+    const bounds = layer.getBounds();
+    if (!bounds.isValid()) return;
+    map.invalidateSize();
+    map.flyToBounds(bounds, { padding: [55, 55], maxZoom: 15.5, duration: .65 });
   }
 
   function syncBookingSubmitState() {
@@ -1543,8 +1560,7 @@
     $('zone-label').textContent = selectedZone;
     refreshMainMap();
     renderCalendar();
-    const layer = flightLayers().find(item => item.feature.properties.name === selectedZone);
-    // La zone sélectionnée est mise en évidence sans changer le niveau de zoom.
+    focusBookingZone(selectedZone);
   };
 
   $('booking-form').onsubmit = event => {
