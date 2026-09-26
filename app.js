@@ -375,9 +375,10 @@
     const reservationCards = root.querySelectorAll('#reservations-view .dashboard-card');
     const fullCurrentList = reservationCards[1]?.querySelector('.card-body');
     const fullUpcomingList = reservationCards[2]?.querySelector('.card-body');
-    const dashboardCards = root.querySelectorAll('#flight-dashboard .dashboard-side > .dashboard-card');
-    const dashboardCurrentList = dashboardCards[0]?.querySelector('.card-body');
-    const dashboardUpcomingList = dashboardCards[2]?.querySelector('.card-body');
+    const dashboardCurrentCard = $('dashboard-current-card');
+    const dashboardUpcomingCard = $('dashboard-upcoming-card');
+    const dashboardCurrentList = dashboardCurrentCard?.querySelector('.card-body');
+    const dashboardUpcomingList = dashboardUpcomingCard?.querySelector('.card-body');
     [currentList, upcomingList, fullCurrentList, fullUpcomingList,
       dashboardCurrentList, dashboardUpcomingList].forEach(list => list?.replaceChildren());
     const sorted = [...reservations].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
@@ -419,8 +420,8 @@
     const countText = count => count + ' vol' + (count > 1 ? 's' : '');
     reservationCards[1]?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(current.length));
     reservationCards[2]?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(upcoming.length));
-    dashboardCards[0]?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(current.length));
-    dashboardCards[2]?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(future.length));
+    dashboardCurrentCard?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(current.length));
+    dashboardUpcomingCard?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(future.length));
     const menu = $('reservations-open');
     let indicator = $('reservations-nav-indicator');
     if (!indicator) {
@@ -1021,50 +1022,44 @@
     localStorage.setItem(flightStartStorageKey(), JSON.stringify(state));
   }
 
-  function flightStartCandidate() {
-    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
-    const confirmed = reservations.filter(item => item.status === 'confirmed' && item.date === today)
-      .sort((a, b) => a.start.localeCompare(b.start));
-    return confirmed.find(item => item.flightStartValidatedAt && !item.flightEndedAt) ||
-      confirmed.find(item => !item.flightStartValidatedAt) || confirmed[0] || null;
-  }
-
   function renderFlightStartValidation() {
-    const candidate = flightStartCandidate();
-    const startButton = $('validate-flight-start');
-    const finishButton = $('finish-flight');
-    if (candidate) {
-      const started = Boolean(candidate.flightStartValidatedAt);
-      const ended = Boolean(candidate.flightEndedAt);
-      const startTime = formatParisTime(candidate.flightStartValidatedAt);
-      const endTime = formatParisTime(candidate.flightEndedAt);
-      $('flight-start-status').textContent = candidate.zone + (ended ?
-        ' · vol terminé' + (endTime ? ' à ' + endTime : '') + '.' : started ?
-          ' · début des vols validé' + (startTime ? ' à ' + startTime : '') + '.' :
-          ' · début des vols à confirmer.');
-      startButton.textContent = started ? 'Début validé' + (startTime ? ' à ' + startTime : '') :
-        'Valider le début des vols';
-      startButton.disabled = started;
-      finishButton.hidden = !started;
-      finishButton.disabled = ended;
-      finishButton.textContent = ended ? 'Vol terminé' + (endTime ? ' à ' + endTime : '') : 'Vol terminé';
+    const list = $('flight-start-list');
+    list.replaceChildren();
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
+    const flights = reservations.map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.status === 'confirmed' && item.date === today && !item.flightEndedAt)
+      .sort((a, b) => a.item.start.localeCompare(b.item.start));
+    const pending = flights.filter(({ item }) => !item.flightStartValidatedAt).length;
+    $('flight-validation-count').textContent = pending + ' à valider';
+    if (!flights.length) {
+      list.append(calendarElement('p', 'empty', 'Aucun début de vol à valider aujourd’hui.'));
       return;
     }
-    const demo = readDemoFlightState();
-    const started = Boolean(demo.startAt);
-    const ended = Boolean(demo.endedAt);
-    const startTime = formatParisTime(demo.startAt);
-    const endTime = formatParisTime(demo.endedAt);
-    $('flight-start-status').textContent = 'Zone Bravo · ' + (ended ?
-      'vol terminé' + (endTime ? ' à ' + endTime : '') + ' (maquette).' : started ?
-        'début des vols validé' + (startTime ? ' à ' + startTime : '') + ' (maquette).' :
-        'début à confirmer (maquette).');
-    startButton.textContent = started ? 'Début validé' + (startTime ? ' à ' + startTime : '') :
-      'Valider le début des vols';
-    startButton.disabled = started;
-    finishButton.hidden = !started;
-    finishButton.disabled = ended;
-    finishButton.textContent = ended ? 'Vol terminé' + (endTime ? ' à ' + endTime : '') : 'Vol terminé';
+    flights.forEach(({ item, index }) => {
+      const row = calendarElement('div', 'flight-validation-row');
+      const details = document.createElement('div');
+      details.append(
+        calendarElement('strong', '', item.zone + ' · ' + (item.creator || 'Adhérent')),
+        calendarElement('span', 'small', item.start + ' à ' + item.end + ' · ' + (item.purpose || 'Vol'))
+      );
+      row.append(details);
+      const actions = calendarElement('div', 'flight-start-actions');
+      const start = calendarElement('button', 'validate-flight-start', item.flightStartValidatedAt ?
+        'Début validé' + (formatParisTime(item.flightStartValidatedAt) ? ' à ' + formatParisTime(item.flightStartValidatedAt) : '') :
+        'Valider le début du vol');
+      start.type = 'button';
+      start.dataset.reservationIndex = String(index);
+      start.disabled = Boolean(item.flightStartValidatedAt);
+      actions.append(start);
+      if (item.flightStartValidatedAt) {
+        const finish = calendarElement('button', 'finish-flight', 'Vol terminé');
+        finish.type = 'button';
+        finish.dataset.reservationIndex = String(index);
+        actions.append(finish);
+      }
+      row.append(actions);
+      list.append(row);
+    });
   }
 
   function setView(view, adminSection = 'map') {
@@ -1364,38 +1359,26 @@
   $('reservations-open').onclick = () => setView('reservations');
   $('flight-dashboard-open').onclick = () => setView('dashboard');
   $('rules-open').onclick = () => setView('rules');
-  $('validate-flight-start').onclick = () => {
-    const candidate = flightStartCandidate();
-    if (candidate) {
+  $('flight-start-list').addEventListener('click', event => {
+    const button = event.target.closest('button[data-reservation-index]');
+    if (!button) return;
+    const candidate = reservations[Number(button.dataset.reservationIndex)];
+    if (!candidate || candidate.status !== 'confirmed') return;
+    const now = new Date().toISOString();
+    if (button.classList.contains('validate-flight-start')) {
       if (candidate.flightStartValidatedAt || candidate.flightEndedAt) return;
-      candidate.flightStartValidatedAt = new Date().toISOString();
-      saveReservations();
-    } else {
-      const demo = readDemoFlightState();
-      if (demo.startAt || demo.endedAt) return;
-      saveDemoFlightState({ startAt: new Date().toISOString(), endedAt: null });
-    }
-    renderFlightStartValidation();
-    renderAdminActiveFlights();
-    renderSavedRequests();
-    notify('Début des vols validé dans cette maquette.');
-  };
-  $('finish-flight').onclick = () => {
-    const candidate = flightStartCandidate();
-    if (candidate) {
+      candidate.flightStartValidatedAt = now;
+      notify('Début du vol validé à ' + formatParisTime(now) + '.');
+    } else if (button.classList.contains('finish-flight')) {
       if (!candidate.flightStartValidatedAt || candidate.flightEndedAt) return;
-      candidate.flightEndedAt = new Date().toISOString();
-      saveReservations();
-    } else {
-      const demo = readDemoFlightState();
-      if (!demo.startAt || demo.endedAt) return;
-      saveDemoFlightState({ ...demo, endedAt: new Date().toISOString() });
-    }
+      candidate.flightEndedAt = now;
+      notify('Vol terminé à ' + formatParisTime(now) + '.');
+    } else return;
+    saveReservations();
     renderFlightStartValidation();
     renderAdminActiveFlights();
     renderSavedRequests();
-    notify('Vol terminé à ' + formatParisTime(new Date().toISOString()) + '.');
-  };
+  });
   window.addEventListener('storage', event => {
     if (event.key === reservationKey) {
       reservations.splice(0, reservations.length, ...readReservations());
