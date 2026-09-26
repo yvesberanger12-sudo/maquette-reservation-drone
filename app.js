@@ -392,6 +392,12 @@
     const future = sorted.filter(item => item.status !== 'rejected' && stillRelevant(item));
     const current = future.filter(isCurrent);
     const upcoming = future.filter(item => !isCurrent(item));
+    const weekStartDate = mondayOf(parseDate(nowParis.slice(0, 10)));
+    const weekStart = isoDate(weekStartDate);
+    const nextWeekStart = isoDate(dateAfter(weekStartDate, 7));
+    const thisWeekCount = future.filter(item => item.date >= weekStart && item.date < nextWeekStart).length;
+    $('pilot-planned').textContent = thisWeekCount + ' vol' + (thisWeekCount > 1 ? 's' : '') +
+      ' prévu' + (thisWeekCount > 1 ? 's' : '') + ' cette semaine';
     const createRow = (item, ongoing = false) => {
       const row = calendarElement('div', 'request');
       row.dataset.calendarReservation = 'true';
