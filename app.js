@@ -34,6 +34,7 @@
   };
   const reservationKey = 'aerozone-calendar-reservations';
   const clientKey = 'aerozone-demo-clients';
+  const informationKey = 'aerozone-admin-information-v1';
   const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
   const center = [48.5951055, 2.3212347];
   // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
@@ -64,6 +65,7 @@
   const mirrorMaps = new Map();
   const reservations = readReservations();
   const clients = readClients();
+  const adminInfos = readAdminInfos();
   let calendarView = 'day';
   let calendarDate = parseDate($('booking-date').value) || new Date();
 
@@ -182,6 +184,21 @@
     } catch {
       return [];
     }
+  }
+
+  function readAdminInfos() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(informationKey) || '[]');
+      return Array.isArray(saved) ? saved.filter(item => item && typeof item.id === 'string' &&
+        typeof item.title === 'string' && typeof item.text === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveAdminInfos() {
+    try { localStorage.setItem(informationKey, JSON.stringify(adminInfos)); }
+    catch { notify('Impossible d’enregistrer cette information dans ce navigateur'); }
   }
 
   function saveClients() {
@@ -634,6 +651,45 @@
     });
   }
 
+  function renderAdminInfos() {
+    const list = $('admin-info-list');
+    list.replaceChildren();
+    $('admin-info-count').textContent = adminInfos.length + ' information' + (adminInfos.length > 1 ? 's' : '');
+    if (!adminInfos.length) {
+      list.append(calendarElement('p', 'empty', 'Aucune information publiée dans ce navigateur.'));
+    }
+    adminInfos.forEach(item => {
+      const row = calendarElement('div', 'admin-info-row' + (item.active === false ? ' is-inactive' : ''));
+      const detail = document.createElement('div');
+      detail.append(calendarElement('strong', '', item.title),
+        calendarElement('p', '', item.text),
+        calendarElement('span', 'small', item.active === false ? 'Masquée aux adhérents' : 'Visible dans les alertes'));
+      const toggle = calendarElement('button', '', item.active === false ? 'Réactiver' : 'Masquer');
+      toggle.type = 'button';
+      toggle.dataset.infoId = item.id;
+      row.append(detail, toggle);
+      list.append(row);
+    });
+    renderDashboardAdminAlerts();
+  }
+
+  function renderDashboardAdminAlerts() {
+    const list = $('dashboard-admin-alerts');
+    list.replaceChildren();
+    const active = adminInfos.filter(item => item.active !== false);
+    $('dashboard-alert-count').textContent = (active.length + 1) + ' à suivre';
+    active.forEach(item => {
+      const row = calendarElement('div', 'alert-item');
+      const dot = calendarElement('i', 'alert-dot info');
+      dot.setAttribute('aria-hidden', 'true');
+      const content = calendarElement('div', 'alert-content');
+      content.append(calendarElement('strong', '', item.title),
+        calendarElement('p', 'admin-alert-text', item.text));
+      row.append(dot, content);
+      list.append(row);
+    });
+  }
+
   function currentFeatures() {
     return zones.getLayers().map(layer => layer.toGeoJSON());
   }
@@ -953,14 +1009,18 @@
   function setAdminSection(section) {
     const validation = section === 'validation';
     const clientSection = section === 'clients';
-    $('admin-map-panel').hidden = validation || clientSection;
+    const informationSection = section === 'information';
+    $('admin-map-panel').hidden = validation || clientSection || informationSection;
     $('admin-validation').hidden = !validation;
     $('admin-active-flights').hidden = !validation;
     $('admin-clients').hidden = !clientSection;
-    $('admin-map-open').classList.toggle('active', !validation && !clientSection);
+    $('admin-information').hidden = !informationSection;
+    $('admin-map-open').classList.toggle('active', !validation && !clientSection && !informationSection);
     $('admin-validation-open').classList.toggle('active', validation);
+    $('admin-information-open').classList.toggle('active', informationSection);
     $('admin-clients-open').classList.toggle('active', clientSection);
     if (validation) renderAdminRequests();
+    else if (informationSection) renderAdminInfos();
     else if (clientSection) renderClients();
     else requestAnimationFrame(() => map.invalidateSize());
   }
@@ -1411,16 +1471,48 @@
     } else if (event.key === flightStartStorageKey()) {
       renderAdminActiveFlights();
       renderFlightStartValidation();
+    } else if (event.key === informationKey) {
+      adminInfos.splice(0, adminInfos.length, ...readAdminInfos());
+      renderAdminInfos();
     }
   });
   $('admin-nav').onclick = () => openAdmin('map');
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
+  $('admin-information-open').onclick = () => openAdmin('information');
   $('admin-clients-open').onclick = () => openAdmin('clients');
   $('exit-admin').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
   $('booking-profile-link').onclick = () => setView('profile');
   $('profile-close').onclick = () => setView('booking');
+  $('admin-info-form').onsubmit = event => {
+    event.preventDefault();
+    if (!adminAuthenticated) return;
+    const title = $('admin-info-title').value.trim();
+    const message = $('admin-info-text').value.trim();
+    if (!title || !message) {
+      notify('Renseignez le titre et le texte de l’information.');
+      return;
+    }
+    adminInfos.unshift({
+      id: 'info-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+      title, text: message, active: true
+    });
+    saveAdminInfos();
+    renderAdminInfos();
+    $('admin-info-form').reset();
+    notify('Information publiée dans les alertes de cette maquette.');
+  };
+  $('admin-info-list').onclick = event => {
+    const button = event.target.closest('button[data-info-id]');
+    if (!button || !adminAuthenticated) return;
+    const item = adminInfos.find(info => info.id === button.dataset.infoId);
+    if (!item) return;
+    item.active = item.active === false;
+    saveAdminInfos();
+    renderAdminInfos();
+    notify(item.active ? 'Information réactivée.' : 'Information masquée.');
+  };
   $('client-form').onsubmit = event => {
     event.preventDefault();
     const email = $('client-email').value.trim().toLowerCase();
@@ -1689,6 +1781,7 @@
   });
   renderAdminRequests();
   renderClients();
+  renderAdminInfos();
   const saved = readCollection(storageKey);
   let displayedFeatures = saved?.features || [];
   let needsLfr333 = true;
