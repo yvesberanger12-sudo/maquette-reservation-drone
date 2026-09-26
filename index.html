@@ -68,6 +68,19 @@
     #drone-booking-mock .admin-client-row strong{display:block;font-size:13px}
     #drone-booking-mock .admin-client-row .small{display:block;margin-top:3px;overflow-wrap:anywhere}
     #drone-booking-mock .admin-client-row a{display:inline-block;padding:9px 11px;border-radius:7px;background:#286178;color:#fff;text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap}
+    #drone-booking-mock .admin-information{display:grid;gap:16px}
+    #drone-booking-mock .admin-information>.panel{padding:0;overflow:hidden}
+    #drone-booking-mock .admin-information .formgrid label{display:grid;gap:6px;font-size:12px;font-weight:650;color:var(--ink)}
+    #drone-booking-mock .admin-information textarea{width:100%;min-height:110px;resize:vertical;padding:10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px}
+    #drone-booking-mock .admin-info-list{padding:10px 16px 16px}
+    #drone-booking-mock .admin-info-row{display:flex;justify-content:space-between;align-items:start;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+    #drone-booking-mock .admin-info-row:first-child{border-top:0}
+    #drone-booking-mock .admin-info-row strong{display:block;font-size:13px}
+    #drone-booking-mock .admin-info-row p,#drone-booking-mock .admin-alert-text{margin:5px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+    #drone-booking-mock .admin-info-row .small{display:block;margin-top:5px}
+    #drone-booking-mock .admin-info-row button{flex:none;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:12px}
+    #drone-booking-mock .admin-info-row.is-inactive{opacity:.65}
+    @media(max-width:640px){#drone-booking-mock .admin-info-row{flex-direction:column}}
     #drone-booking-mock .invite-intro{margin:0 0 15px;padding:12px;border-radius:8px;background:var(--soft);color:var(--ink);font-size:12px}
     #drone-booking-mock .invite-code-fields{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
     @media(max-width:640px){#drone-booking-mock .admin-client-row{grid-template-columns:1fr}#drone-booking-mock .admin-client-row a{justify-self:start}}
@@ -179,7 +192,7 @@
     <aside class="side">
       <div class="brand"><div class="brand-row"><svg class="brand-drone" viewBox="0 0 64 64" aria-hidden="true"><circle cx="13" cy="13" r="7"></circle><circle cx="51" cy="13" r="7"></circle><circle cx="13" cy="51" r="7"></circle><circle cx="51" cy="51" r="7"></circle><path d="M18 18 27 27m19-9-9 9M18 46l9-9m19 9-9-9"></path><rect x="26" y="26" width="12" height="12" rx="3"></rect><path d="M29 39v5m6-5v5"></path></svg><strong>AERO ZONE</strong></div><span class="brand-tagline">Gestion des espaces drone</span></div>
       <nav class="nav" aria-label="Navigation">
-        <button class="active" id="booking-open" type="button">Réserver un vol</button><button id="reservations-open" type="button">Mes réservations</button><button id="flight-dashboard-open" type="button">Cartes de vols</button><button id="rules-open" type="button">Règles LFR-333</button><button id="admin-nav" type="button" aria-expanded="false" aria-controls="admin-subnav">Administrateur</button><div class="admin-subnav" id="admin-subnav" aria-label="Sous-menu administrateur" hidden><button id="admin-map-open" type="button">Carte et zones de vol</button><button id="admin-validation-open" type="button">Validation des demandes</button><button id="admin-clients-open" type="button">Comptes adhérents</button></div>
+        <button class="active" id="booking-open" type="button">Réserver un vol</button><button id="reservations-open" type="button">Mes réservations</button><button id="flight-dashboard-open" type="button">Cartes de vols</button><button id="rules-open" type="button">Règles LFR-333</button><button id="admin-nav" type="button" aria-expanded="false" aria-controls="admin-subnav">Administrateur</button><div class="admin-subnav" id="admin-subnav" aria-label="Sous-menu administrateur" hidden><button id="admin-map-open" type="button">Carte et zones de vol</button><button id="admin-validation-open" type="button">Validation des demandes</button><button id="admin-information-open" type="button">Informations</button><button id="admin-clients-open" type="button">Comptes adhérents</button></div>
       </nav>
       <div class="pilot"><div class="pilot-head"><strong>Camille Martin</strong><button class="profile-icon" id="profile-open" type="button" aria-label="Ouvrir mon profil" title="Mon profil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.8-3.6 3.2-5.5 7-5.5s6.2 1.9 7 5.5"></path></svg></button></div><span class="pilot-company" id="pilot-company">Société non renseignée</span><span id="pilot-role">Pilote opérateur</span><span class="pilot-planned" id="pilot-planned">0 vol prévu cette semaine</span></div>
     </aside>
@@ -193,7 +206,7 @@
     <section class="panel"><div class="panelhead"><h2>Carte de l’activité</h2><span class="small">Centre d’Essais en Vol</span></div><div class="map dashboard-map" id="flight-dashboard-map" aria-label="Carte de suivi des vols"></div></section>
     <aside class="dashboard-side">
       <section class="panel dashboard-card" id="dashboard-current-card"><div class="dashboard-heading"><h2>Vols en cours</h2><span class="small">0 vol</span></div><div class="card-body"></div></section>
-      <section class="panel dashboard-card"><div class="dashboard-heading"><h2>Alertes</h2><span class="small">Météo</span></div><div class="card-body"><div class="alert-item"><i class="alert-dot"></i><div class="alert-content"><strong>Météo à surveiller</strong><div class="weather-preview" aria-live="polite"><span class="weather-condition" id="dashboard-weather-condition">Chargement de la météo locale…</span><div class="weather-stats"><span>Température <b id="dashboard-weather-temp">—</b></span><span>Vent <b id="dashboard-weather-wind">—</b></span><span>Rafales <b id="dashboard-weather-gusts">—</b></span></div><span class="weather-note" id="dashboard-weather-note">Données météo indicatives, à vérifier avant le vol.</span><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Source : Open-Meteo</a></div></div></div></div></section>
+      <section class="panel dashboard-card"><div class="dashboard-heading"><h2>Alertes</h2><span class="small" id="dashboard-alert-count">1 à suivre</span></div><div class="card-body"><div class="alert-item"><i class="alert-dot"></i><div class="alert-content"><strong>Météo à surveiller</strong><div class="weather-preview" aria-live="polite"><span class="weather-condition" id="dashboard-weather-condition">Chargement de la météo locale…</span><div class="weather-stats"><span>Température <b id="dashboard-weather-temp">—</b></span><span>Vent <b id="dashboard-weather-wind">—</b></span><span>Rafales <b id="dashboard-weather-gusts">—</b></span></div><span class="weather-note" id="dashboard-weather-note">Données météo indicatives, à vérifier avant le vol.</span><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Source : Open-Meteo</a></div></div></div><div id="dashboard-admin-alerts" aria-live="polite"></div></div></section>
       <section class="panel dashboard-card" id="flight-validation-card"><div class="dashboard-heading"><h2>Validation début des vols</h2><span class="small" id="flight-validation-count">0 à valider</span></div><div class="card-body" id="flight-start-list"></div></section>
       <section class="panel dashboard-card" id="dashboard-upcoming-card"><div class="dashboard-heading"><h2>Prochaines réservations</h2><span class="small">0 vol</span></div><div class="card-body"></div></section>
     </aside>
@@ -223,6 +236,10 @@
         </section>
         <section class="panel admin-validation" id="admin-validation" hidden><div class="admin-banner"><h2>Validation des demandes</h2><span class="small" id="admin-request-count">0 demande</span></div><div class="admin-request-list" id="admin-request-list"></div></section>
         <section class="panel admin-validation admin-active-flights" id="admin-active-flights" hidden><div class="admin-banner"><h2>Vols en cours</h2><span class="small" id="admin-active-flight-count">0 vol</span></div><div class="admin-request-list" id="admin-active-flight-list"></div></section>
+        <section class="admin-information" id="admin-information" hidden>
+          <section class="panel"><div class="admin-banner"><h2>Informations</h2></div><div class="admin-client-body"><p class="small">Publiez une alerte qui apparaîtra dans le tableau de bord des vols. Dans cette maquette, elle reste enregistrée uniquement dans ce navigateur.</p><form class="formgrid" id="admin-info-form"><label>Titre<input id="admin-info-title" maxlength="100" placeholder="Ex. Message important" required></label><label>Texte<textarea id="admin-info-text" rows="5" maxlength="2000" placeholder="Rédigez votre message…" required></textarea></label><button class="primary" type="submit">Publier l’information</button></form></div></section>
+          <section class="panel"><div class="admin-banner"><h2>Informations publiées</h2><span class="small" id="admin-info-count">0 information</span></div><div class="admin-info-list" id="admin-info-list"></div></section>
+        </section>
         <section class="admin-clients" id="admin-clients" hidden><section class="panel"><div class="admin-banner"><h2>Créer un compte adhérent</h2></div><div class="admin-client-body"><p class="small">Maquette : les clients restent dans ce navigateur. L’invitation ouvre un brouillon d’e-mail à envoyer manuellement.</p><form id="client-form" class="formgrid"><div class="two"><label>Nom<input id="client-name" required></label><label>Prénom<input id="client-firstname" required></label></div><label>Société<input id="client-company"></label><label>Adresse e-mail<input id="client-email" type="email" required></label><button class="primary" type="submit">Créer le client</button></form></div></section><section class="panel"><div class="admin-banner"><h2>Clients déjà créés</h2><span class="small" id="client-count">0 client</span></div><div class="admin-client-list" id="client-list"></div></section></section>
       </section>
       <section class="rules-view" id="rules-view" hidden>
@@ -253,7 +270,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=focus-zone-20260926-1"></script>
+  <script src="app.js?v=admin-informations-20260926-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
