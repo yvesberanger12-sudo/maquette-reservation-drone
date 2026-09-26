@@ -370,11 +370,16 @@
   }
 
   function renderSavedRequests() {
-    root.querySelectorAll('[data-calendar-reservation]').forEach(node => node.remove());
-    root.querySelectorAll('[data-reservation-empty]').forEach(node => node.remove());
     const currentList = $('current-requests');
     const upcomingList = $('my-requests');
-    const fullList = root.querySelector('#reservations-view .dashboard-card:last-child .card-body');
+    const reservationCards = root.querySelectorAll('#reservations-view .dashboard-card');
+    const fullCurrentList = reservationCards[1]?.querySelector('.card-body');
+    const fullUpcomingList = reservationCards[2]?.querySelector('.card-body');
+    const dashboardCards = root.querySelectorAll('#flight-dashboard .dashboard-side > .dashboard-card');
+    const dashboardCurrentList = dashboardCards[0]?.querySelector('.card-body');
+    const dashboardUpcomingList = dashboardCards[2]?.querySelector('.card-body');
+    [currentList, upcomingList, fullCurrentList, fullUpcomingList,
+      dashboardCurrentList, dashboardUpcomingList].forEach(list => list?.replaceChildren());
     const sorted = [...reservations].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
     const nowParis = new Intl.DateTimeFormat('sv-SE', {
       timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -383,7 +388,9 @@
     const stillRelevant = item => !item.flightEndedAt && item.date + ' ' + item.end > nowParis;
     const isCurrent = item => item.status === 'confirmed' && item.flightStartValidatedAt &&
       item.date + ' ' + item.start <= nowParis && stillRelevant(item);
-    const future = sorted.filter(stillRelevant);
+    const future = sorted.filter(item => item.status !== 'rejected' && stillRelevant(item));
+    const current = future.filter(isCurrent);
+    const upcoming = future.filter(item => !isCurrent(item));
     const createRow = (item, ongoing = false) => {
       const row = calendarElement('div', 'request');
       row.dataset.calendarReservation = 'true';
@@ -398,14 +405,34 @@
       row.append(detail, status);
       return row;
     };
-    future.forEach(item => {
-      const ongoing = isCurrent(item);
-      (ongoing ? currentList : upcomingList).append(createRow(item, ongoing));
-      if (!ongoing) fullList?.append(createRow(item));
+    current.forEach(item => {
+      currentList.append(createRow(item, true));
+      fullCurrentList?.append(createRow(item, true));
+      dashboardCurrentList?.append(createRow(item, true));
+      dashboardUpcomingList?.append(createRow(item, true));
     });
-    const count = root.querySelector('#reservations-view .dashboard-card:last-child .dashboard-heading .small');
-    const upcomingCount = future.filter(item => !isCurrent(item)).length;
-    if (count) count.textContent = upcomingCount + ' vol' + (upcomingCount > 1 ? 's' : '');
+    upcoming.forEach(item => {
+      upcomingList.append(createRow(item));
+      fullUpcomingList?.append(createRow(item));
+      dashboardUpcomingList?.append(createRow(item));
+    });
+    const countText = count => count + ' vol' + (count > 1 ? 's' : '');
+    reservationCards[1]?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(current.length));
+    reservationCards[2]?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(upcoming.length));
+    dashboardCards[0]?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(current.length));
+    dashboardCards[2]?.querySelector('.dashboard-heading .small')?.replaceChildren(countText(future.length));
+    const menu = $('reservations-open');
+    let indicator = $('reservations-nav-indicator');
+    if (!indicator) {
+      indicator = calendarElement('span', 'nav-reservation-indicator');
+      indicator.id = 'reservations-nav-indicator';
+      indicator.setAttribute('aria-hidden', 'true');
+      menu.append(indicator);
+    }
+    indicator.hidden = future.length === 0;
+    const menuStatus = current.length + ' en cours, ' + upcoming.length + ' à venir';
+    menu.title = menuStatus;
+    menu.setAttribute('aria-label', 'Mes réservations, ' + menuStatus);
     const emptyRow = message => {
       const node = calendarElement('p', 'empty', message);
       node.dataset.reservationEmpty = 'true';
@@ -413,7 +440,12 @@
     };
     if (!currentList.children.length) currentList.append(emptyRow('Aucun vol en cours.'));
     if (!upcomingList.children.length) upcomingList.append(emptyRow('Aucune réservation à venir.'));
-    if (!upcomingCount) fullList?.append(emptyRow('Aucune réservation à venir.'));
+    if (!current.length) {
+      fullCurrentList?.append(emptyRow('Aucun vol en cours.'));
+      dashboardCurrentList?.append(emptyRow('Aucun vol en cours.'));
+    }
+    if (!upcoming.length) fullUpcomingList?.append(emptyRow('Aucune réservation à venir.'));
+    if (!future.length) dashboardUpcomingList?.append(emptyRow('Aucune réservation en cours ou à venir.'));
   }
 
   function reservationCompany(item) {
@@ -1027,7 +1059,7 @@
     showSubzones(true);
     activeView = view;
     const booking = view === 'booking';
-    if (booking) renderSavedRequests();
+    if (booking || view === 'reservations' || view === 'dashboard') renderSavedRequests();
     $('booking-top').hidden = !booking;
     root.querySelector('.layout').hidden = !booking;
     $('reservations-view').hidden = view !== 'reservations';
@@ -1331,6 +1363,7 @@
     }
     renderFlightStartValidation();
     renderAdminActiveFlights();
+    renderSavedRequests();
     notify('Début des vols validé dans cette maquette.');
   };
   $('finish-flight').onclick = () => {
@@ -1346,6 +1379,7 @@
     }
     renderFlightStartValidation();
     renderAdminActiveFlights();
+    renderSavedRequests();
     notify('Vol terminé à ' + formatParisTime(new Date().toISOString()) + '.');
   };
   window.addEventListener('storage', event => {
