@@ -430,6 +430,7 @@
       menu.append(indicator);
     }
     indicator.hidden = future.length === 0;
+    indicator.textContent = future.length > 99 ? '99+' : String(future.length);
     const menuStatus = current.length + ' en cours, ' + upcoming.length + ' à venir';
     menu.title = menuStatus;
     menu.setAttribute('aria-label', 'Mes réservations, ' + menuStatus);
