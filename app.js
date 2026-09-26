@@ -531,6 +531,19 @@
     const pending = reservations.filter(item => item.status !== 'confirmed' && item.status !== 'rejected')
       .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
     $('admin-request-count').textContent = pending.length + ' demande' + (pending.length > 1 ? 's' : '');
+    const adminMenu = $('admin-nav');
+    let indicator = $('admin-nav-indicator');
+    if (!indicator) {
+      indicator = calendarElement('span', 'nav-admin-indicator');
+      indicator.id = 'admin-nav-indicator';
+      indicator.setAttribute('aria-hidden', 'true');
+      adminMenu.append(indicator);
+    }
+    indicator.hidden = pending.length === 0;
+    indicator.textContent = pending.length > 99 ? '99+' : String(pending.length);
+    const pendingLabel = pending.length + ' demande' + (pending.length > 1 ? 's' : '') + ' à valider';
+    adminMenu.title = pendingLabel;
+    adminMenu.setAttribute('aria-label', 'Administrateur, ' + pendingLabel);
     if (!pending.length) {
       list.append(calendarElement('p', 'empty',
         'Aucune demande en attente ici. Cette maquette ne synchronise pas les autres navigateurs ou appareils.'));
