@@ -72,6 +72,7 @@
     #drone-booking-mock .invite-code-fields{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
     @media(max-width:640px){#drone-booking-mock .admin-client-row{grid-template-columns:1fr}#drone-booking-mock .admin-client-row a{justify-self:start}}
     #drone-booking-mock #site-map-home .leaflet-tooltip.aerozone-zone-label{font-size:9px;padding:2px 4px}
+    #drone-booking-mock #site-map-home .leaflet-tooltip.zone-label-selected{z-index:1000!important;background:#ffbd3a;color:#35240b;font-size:11px;padding:3px 6px;box-shadow:0 2px 10px #0006}
     #drone-booking-mock #site-map-home .leaflet-control-zoom a{width:28px;height:28px;line-height:28px;font-size:16px}
     #drone-booking-mock #site-map-home .leaflet-control-attribution{font-size:10px;padding:1px 4px}
     #drone-booking-mock .alert-content{display:grid;gap:5px;min-width:0;flex:1}
@@ -252,7 +253,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=compteur-semaine-20260926-1"></script>
+  <script src="app.js?v=focus-zone-20260926-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
