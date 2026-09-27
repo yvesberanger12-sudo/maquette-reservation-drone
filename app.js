@@ -67,7 +67,10 @@
   const reservations = readReservations();
   const clients = readClients();
   const adminInfos = readAdminInfos();
-  const blockedDates = new Set(readBlockedDates());
+  const blockedPeriods = readBlockedPeriods();
+  const blockedDates = new Set();
+  const blockedTitles = new Map();
+  rebuildBlockedDates();
   let calendarView = 'day';
   let calendarDate = parseDate($('booking-date').value) || new Date();
   let lastBookableDate = $('booking-date').value;
@@ -204,18 +207,44 @@
     catch { notify('Impossible d’enregistrer cette information dans ce navigateur'); }
   }
 
-  function readBlockedDates() {
+  function periodDates(period) {
+    const start = parseDate(period.start);
+    const end = parseDate(period.end);
+    if (!start || !end || end < start) return [];
+    const dates = [];
+    for (let date = start; date <= end && dates.length < 366; date = dateAfter(date, 1))
+      dates.push(isoDate(date));
+    return dates;
+  }
+
+  function readBlockedPeriods() {
     try {
       const saved = JSON.parse(localStorage.getItem(blockedDatesKey) || '[]');
-      return Array.isArray(saved) ? saved.filter(date => typeof date === 'string' && parseDate(date)) : [];
+      if (!Array.isArray(saved)) return [];
+      return saved.map((item, index) => typeof item === 'string' ? {
+        id: 'ancienne-date-' + index, title: 'Date bloquée', start: item, end: item
+      } : item).filter(item => item && typeof item.title === 'string' &&
+        periodDates(item).length && periodDates(item).at(-1) === item.end).map((item, index) => ({
+        id: String(item.id || 'periode-' + index), title: item.title.trim().slice(0, 80) || 'Date bloquée',
+        start: item.start, end: item.end
+      }));
     } catch {
       return [];
     }
   }
 
-  function saveBlockedDates() {
-    try { localStorage.setItem(blockedDatesKey, JSON.stringify([...blockedDates].sort())); }
-    catch { notify('Impossible d’enregistrer les dates bloquées dans ce navigateur'); }
+  function rebuildBlockedDates() {
+    blockedDates.clear();
+    blockedTitles.clear();
+    blockedPeriods.forEach(period => periodDates(period).forEach(date => {
+      blockedDates.add(date);
+      blockedTitles.set(date, period.title);
+    }));
+  }
+
+  function saveBlockedPeriods() {
+    try { localStorage.setItem(blockedDatesKey, JSON.stringify(blockedPeriods)); }
+    catch { notify('Impossible d’enregistrer les périodes bloquées dans ce navigateur'); }
   }
 
   function saveClients() {
@@ -316,7 +345,8 @@
     const button = calendarElement('button', 'calendar-slot ' + status,
       compact && status !== 'blocked' ? hourText(hour).slice(0, 2) + 'h' : label);
     button.type = 'button';
-    button.title = zone + ' · ' + date + ' · ' + hourText(hour) + '–' + hourText(hour + 1) + ' · ' + label;
+    button.title = zone + ' · ' + date + ' · ' + hourText(hour) + '–' + hourText(hour + 1) +
+      ' · ' + (status === 'blocked' ? 'Bloqué : ' + blockedTitles.get(date) : label);
     button.setAttribute('aria-label', button.title);
     button.disabled = status !== 'free';
     if (zone === $('zone-select').value && date === $('booking-date').value && hourText(hour) === $('start').value)
@@ -341,7 +371,7 @@
     root.querySelector('.calendar-hint').textContent = calendarView === 'month' ?
       'Choisissez un jour pour afficher les créneaux de 08:00 à 19:00.' :
       calendarView === 'day' && blockedDates.has(isoDate(calendarDate)) ?
-        'Cette date est bloquée par l’administrateur : aucune demande ne peut être faite.' :
+        'Indisponible — ' + blockedTitles.get(isoDate(calendarDate)) + '. Aucune demande ne peut être faite.' :
         'Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.';
     if (calendarView === 'day') title.textContent = 'Disponibilités du ' + shortDate(calendarDate);
     if (calendarView === 'week') {
@@ -374,15 +404,17 @@
         button.type = 'button';
         button.append(calendarElement('span', 'day-number', String(date.getDate())),
           calendarElement('span', 'day-hours', blockedDates.has(key) ? 'Date bloquée' : '08:00–19:00'));
+        if (blockedDates.has(key)) button.append(calendarElement('span', 'blocked-day-title', blockedTitles.get(key)));
         if (count) button.append(calendarElement('span', 'day-count', count + ' demande' + (count > 1 ? 's' : '')));
-        button.setAttribute('aria-label', shortDate(date) + (blockedDates.has(key) ? ' · date bloquée' :
+        button.setAttribute('aria-label', shortDate(date) + (blockedDates.has(key) ? ' · bloqué : ' + blockedTitles.get(key) :
           count ? ' · ' + count + ' demandes' : ' · libre de 08:00 à 19:00'));
-        button.disabled = blockedDates.has(key);
         button.onclick = () => {
           calendarDate = date;
           calendarView = 'day';
-          $('booking-date').value = key;
-          lastBookableDate = key;
+          if (!blockedDates.has(key)) {
+            $('booking-date').value = key;
+            lastBookableDate = key;
+          }
           renderCalendar();
         };
         grid.append(button);
@@ -400,7 +432,12 @@
     } else {
       for (let day = 0; day < 7; day++) {
         const date = dateAfter(monday, day);
-        head.append(calendarElement('th', '', new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'numeric' }).format(date)));
+        const key = isoDate(date);
+        const cell = calendarElement('th', '', new Intl.DateTimeFormat('fr-FR', {
+          weekday: 'short', day: 'numeric', month: 'numeric'
+        }).format(date));
+        if (blockedDates.has(key)) cell.append(calendarElement('span', 'blocked-day-title', blockedTitles.get(key)));
+        head.append(cell);
       }
     }
     const body = table.createTBody();
@@ -731,22 +768,26 @@
   function renderAdminCalendar() {
     const list = $('admin-blocked-list');
     list.replaceChildren();
-    $('admin-blocked-count').textContent = blockedDates.size + ' date' + (blockedDates.size > 1 ? 's' : '');
-    if (!blockedDates.size) {
-      list.append(calendarElement('p', 'empty', 'Aucune date bloquée.'));
+    $('admin-blocked-count').textContent = blockedPeriods.length + ' période' +
+      (blockedPeriods.length > 1 ? 's' : '');
+    if (!blockedPeriods.length) {
+      list.append(calendarElement('p', 'empty', 'Aucune période bloquée.'));
       return;
     }
-    [...blockedDates].sort().forEach(date => {
+    [...blockedPeriods].sort((a, b) => a.start.localeCompare(b.start)).forEach(period => {
       const row = calendarElement('div', 'admin-blocked-row');
       const detail = document.createElement('div');
-      detail.append(calendarElement('strong', '', reservationDate(parseDate(date))));
-      const existing = reservations.filter(item => item.date === date && item.status !== 'rejected').length;
+      detail.append(calendarElement('strong', '', period.title));
+      detail.append(calendarElement('span', 'small', reservationDate(parseDate(period.start)) +
+        (period.end === period.start ? '' : ' — ' + reservationDate(parseDate(period.end)))));
+      const dates = new Set(periodDates(period));
+      const existing = reservations.filter(item => dates.has(item.date) && item.status !== 'rejected').length;
       if (existing) detail.append(calendarElement('span', 'small', existing + ' réservation' +
         (existing > 1 ? 's' : '') + ' déjà enregistrée' + (existing > 1 ? 's' : '') + ' conservée' + (existing > 1 ? 's' : '')));
       row.append(detail);
       const button = calendarElement('button', '', 'Débloquer');
       button.type = 'button';
-      button.dataset.blockedDate = date;
+      button.dataset.blockedId = period.id;
       row.append(button);
       list.append(row);
     });
@@ -1576,8 +1617,8 @@
       adminInfos.splice(0, adminInfos.length, ...readAdminInfos());
       renderAdminInfos();
     } else if (event.key === blockedDatesKey) {
-      blockedDates.clear();
-      readBlockedDates().forEach(date => blockedDates.add(date));
+      blockedPeriods.splice(0, blockedPeriods.length, ...readBlockedPeriods());
+      rebuildBlockedDates();
       refreshBlockedDates();
     }
   });
@@ -1622,30 +1663,45 @@
   $('admin-block-date-form').onsubmit = event => {
     event.preventDefault();
     if (!adminAuthenticated) return;
-    const date = $('admin-block-date').value;
-    if (!parseDate(date)) {
-      notify('Choisissez une date valide.');
+    const title = $('admin-block-title').value.trim();
+    const start = $('admin-block-date').value;
+    const end = $('admin-block-end').value;
+    const dates = periodDates({ start, end });
+    if (!title || !dates.length || dates.at(-1) !== end) {
+      notify('Indiquez un titre et une période valide de 366 jours maximum.');
       return;
     }
-    if (blockedDates.has(date)) {
-      notify('Cette date est déjà bloquée.');
+    if (dates.some(date => blockedDates.has(date))) {
+      notify('Cette période contient déjà une date bloquée.');
       return;
     }
-    blockedDates.add(date);
-    saveBlockedDates();
+    blockedPeriods.push({ id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+      title: title.slice(0, 80), start, end });
+    rebuildBlockedDates();
+    saveBlockedPeriods();
     refreshBlockedDates();
     $('admin-block-date-form').reset();
-    const existing = reservations.filter(item => item.date === date && item.status !== 'rejected').length;
-    notify('Date bloquée pour les nouvelles demandes.' +
+    const dateSet = new Set(dates);
+    const existing = reservations.filter(item => dateSet.has(item.date) && item.status !== 'rejected').length;
+    notify(dates.length + ' jour' + (dates.length > 1 ? 's' : '') + ' bloqué' + (dates.length > 1 ? 's' : '') +
+      ' pour les nouvelles demandes.' +
       (existing ? ' ' + existing + ' réservation' + (existing > 1 ? 's' : '') + ' déjà enregistrée' + (existing > 1 ? 's' : '') + ' conservée' + (existing > 1 ? 's' : '') + '.' : ''));
   };
+  $('admin-block-date').onchange = () => {
+    const start = $('admin-block-date').value;
+    if (start && (!$('admin-block-end').value || $('admin-block-end').value < start))
+      $('admin-block-end').value = start;
+  };
   $('admin-blocked-list').onclick = event => {
-    const button = event.target.closest('button[data-blocked-date]');
+    const button = event.target.closest('button[data-blocked-id]');
     if (!button || !adminAuthenticated) return;
-    blockedDates.delete(button.dataset.blockedDate);
-    saveBlockedDates();
+    const index = blockedPeriods.findIndex(period => period.id === button.dataset.blockedId);
+    if (index < 0) return;
+    blockedPeriods.splice(index, 1);
+    rebuildBlockedDates();
+    saveBlockedPeriods();
     refreshBlockedDates();
-    notify('Date débloquée : les demandes sont de nouveau possibles.');
+    notify('Période débloquée : les demandes sont de nouveau possibles.');
   };
   $('client-form').onsubmit = event => {
     event.preventDefault();
@@ -1766,14 +1822,11 @@
   $('calendar-date').onchange = () => {
     const date = parseDate($('calendar-date').value);
     if (!date) return;
-    if (blockedDates.has(isoDate(date))) {
-      $('calendar-date').value = isoDate(calendarDate);
-      notify('Cette date est bloquée par l’administrateur.');
-      return;
-    }
     calendarDate = date;
-    $('booking-date').value = isoDate(date);
-    lastBookableDate = $('booking-date').value;
+    if (!blockedDates.has(isoDate(date))) {
+      $('booking-date').value = isoDate(date);
+      lastBookableDate = $('booking-date').value;
+    }
     renderCalendar();
   };
   $('booking-date').onchange = () => {
@@ -1781,7 +1834,7 @@
     if (!date) return;
     if (blockedDates.has(isoDate(date))) {
       $('booking-date').value = lastBookableDate;
-      notify('Cette date est bloquée par l’administrateur.');
+      notify('Date indisponible : ' + blockedTitles.get(isoDate(date)));
       return;
     }
     lastBookableDate = isoDate(date);
@@ -1825,7 +1878,7 @@
       return;
     }
     if (blockedDates.has(date)) {
-      notify('Cette date est bloquée par l’administrateur. Choisissez un autre jour.');
+      notify('Date indisponible : ' + blockedTitles.get(date) + '. Choisissez un autre jour.');
       return;
     }
     if (reservations.some(item => item.status !== 'rejected' && item.zone === zone && item.date === date && item.start < end && item.end > start)) {
