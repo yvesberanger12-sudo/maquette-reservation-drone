@@ -992,7 +992,12 @@
           if (event.key === 'Escape') cancel.click();
         };
         if (layer.pm) layer.pm.enable();
-        // La sélection ne modifie pas l'échelle de référence de la carte.
+        layer.bringToFront();
+        const bounds = layer.getBounds();
+        if (bounds.isValid()) {
+          map.invalidateSize();
+          map.flyToBounds(bounds, { padding: [20, 20], maxZoom: 19, duration: .55 });
+        }
       };
       const remove = document.createElement('button');
       remove.type = 'button';
