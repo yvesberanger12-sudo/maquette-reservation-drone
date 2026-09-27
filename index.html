@@ -95,8 +95,10 @@
     #drone-booking-mock #booking-request-heading h2,#drone-booking-mock #booking-request-heading .small{color:var(--selected-zone-text,#fff)}
     #drone-booking-mock .admin-blocked-row button{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:12px}
     #drone-booking-mock .calendar-slot.blocked{background:light-dark(#f4dce0,#51292e);color:light-dark(#973746,#f0abb5)}
-    #drone-booking-mock .month-day.blocked{background:light-dark(#f8e9eb,#4a292f);color:light-dark(#973746,#f0abb5);cursor:not-allowed}
+    #drone-booking-mock .month-day.blocked{background:light-dark(#f8e9eb,#4a292f);color:light-dark(#973746,#f0abb5)}
     #drone-booking-mock .month-day.blocked .day-hours{color:inherit;font-weight:700}
+    #drone-booking-mock .month-day .blocked-day-title{color:inherit;font-size:10px;font-weight:700;white-space:normal;overflow-wrap:anywhere}
+    #drone-booking-mock .calendar-table .blocked-day-title{display:block;margin-top:4px;color:var(--danger);font-size:10px;white-space:normal;overflow-wrap:anywhere}
     #drone-booking-mock .invite-intro{margin:0 0 15px;padding:12px;border-radius:8px;background:var(--soft);color:var(--ink);font-size:12px}
     #drone-booking-mock .invite-code-fields{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
     @media(max-width:640px){#drone-booking-mock .admin-client-row{grid-template-columns:1fr}#drone-booking-mock .admin-client-row a{justify-self:start}}
@@ -257,8 +259,8 @@
           <section class="panel"><div class="admin-banner"><h2>Informations publiées</h2><span class="small" id="admin-info-count">0 information</span></div><div class="admin-info-list" id="admin-info-list"></div></section>
         </section>
         <section class="admin-calendar" id="admin-calendar" hidden>
-          <section class="panel"><div class="admin-banner"><h2>Calendrier</h2></div><div class="admin-client-body"><p class="small">Bloquez une journée pour empêcher toute nouvelle demande de réservation. Les réservations déjà enregistrées ne sont pas supprimées.</p><form class="formgrid" id="admin-block-date-form"><label>Date à bloquer<input id="admin-block-date" type="date" required></label><button class="primary" type="submit">Bloquer cette date</button></form></div></section>
-          <section class="panel"><div class="admin-banner"><h2>Dates bloquées</h2><span class="small" id="admin-blocked-count">0 date</span></div><div class="admin-blocked-list" id="admin-blocked-list"></div></section>
+          <section class="panel"><div class="admin-banner"><h2>Calendrier</h2></div><div class="admin-client-body"><p class="small">Bloquez un ou plusieurs jours et indiquez le motif visible par l’adhérent dans son calendrier. Les réservations déjà enregistrées ne sont pas supprimées.</p><form class="formgrid" id="admin-block-date-form"><label>Titre du blocage<input id="admin-block-title" maxlength="80" placeholder="Ex. Fermeture du site" required></label><div class="two"><label>Date de début<input id="admin-block-date" type="date" required></label><label>Date de fin<input id="admin-block-end" type="date" required></label></div><button class="primary" type="submit">Bloquer la période</button></form></div></section>
+          <section class="panel"><div class="admin-banner"><h2>Périodes bloquées</h2><span class="small" id="admin-blocked-count">0 période</span></div><div class="admin-blocked-list" id="admin-blocked-list"></div></section>
         </section>
         <section class="admin-clients" id="admin-clients" hidden><section class="panel"><div class="admin-banner"><h2>Créer un compte adhérent</h2></div><div class="admin-client-body"><p class="small">Maquette : les clients restent dans ce navigateur. L’invitation ouvre un brouillon d’e-mail à envoyer manuellement.</p><form id="client-form" class="formgrid"><div class="two"><label>Nom<input id="client-name" required></label><label>Prénom<input id="client-firstname" required></label></div><label>Société<input id="client-company"></label><label>Adresse e-mail<input id="client-email" type="email" required></label><button class="primary" type="submit">Créer le client</button></form></div></section><section class="panel"><div class="admin-banner"><h2>Clients déjà créés</h2><span class="small" id="client-count">0 client</span></div><div class="admin-client-list" id="client-list"></div></section></section>
       </section>
@@ -290,7 +292,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=zoom-zone-admin-20260927-1"></script>
+  <script src="app.js?v=periodes-bloquees-20260927-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
