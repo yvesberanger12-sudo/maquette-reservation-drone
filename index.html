@@ -40,6 +40,14 @@
     #drone-booking-mock .drone-section{display:grid;gap:11px;margin-top:8px}
     #drone-booking-mock .drone-section .panelhead{margin:0}
     #drone-booking-mock .profile-drones{display:grid;gap:11px}
+    #drone-booking-mock .profile-form-layout{display:grid;gap:18px}
+    #drone-booking-mock .profile-card{padding:0;overflow:hidden}
+    #drone-booking-mock .profile-card .dashboard-heading{margin:0!important}
+    #drone-booking-mock .profile-card-body{padding:18px}
+    #drone-booking-mock .profile-card .profile-close,#drone-booking-mock .profile-card .profile-add-drone{border:1px solid #ffffff99;border-radius:7px;background:#fff;color:#286178;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer}
+    #drone-booking-mock .profile-card .profile-close:hover,#drone-booking-mock .profile-card .profile-add-drone:hover{background:#eaf3f6}
+    #drone-booking-mock .profile-card.drone-section{display:block;margin:0}
+    @media(max-width:640px){#drone-booking-mock .profile-card-body{padding:14px}#drone-booking-mock .profile-card .dashboard-heading{flex-wrap:wrap}}
     #drone-booking-mock .drone-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:9px;background:var(--soft)}
     #drone-booking-mock .drone-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
     #drone-booking-mock .drone-card-head strong{font-size:13px;color:var(--ink)}
@@ -210,13 +218,34 @@
     <aside class="side">
       <div class="brand"><div class="brand-row"><svg class="brand-drone" viewBox="0 0 64 64" aria-hidden="true"><circle cx="13" cy="13" r="7"></circle><circle cx="51" cy="13" r="7"></circle><circle cx="13" cy="51" r="7"></circle><circle cx="51" cy="51" r="7"></circle><path d="M18 18 27 27m19-9-9 9M18 46l9-9m19 9-9-9"></path><rect x="26" y="26" width="12" height="12" rx="3"></rect><path d="M29 39v5m6-5v5"></path></svg><strong>AERO ZONE</strong></div><span class="brand-tagline">Gestion des espaces drone</span></div>
       <nav class="nav" aria-label="Navigation">
-        <button class="active" id="booking-open" type="button">Réserver un vol</button><button id="reservations-open" type="button">Mes réservations</button><button id="flight-dashboard-open" type="button">Cartes de vols</button><button id="rules-open" type="button">Règles LFR-333</button><button id="admin-nav" type="button" aria-expanded="false" aria-controls="admin-subnav">Administrateur</button><div class="admin-subnav" id="admin-subnav" aria-label="Sous-menu administrateur" hidden><button id="admin-map-open" type="button">Carte et zones de vol</button><button id="admin-validation-open" type="button">Validation des demandes</button><button id="admin-information-open" type="button">Informations</button><button id="admin-calendar-open" type="button">Calendrier</button><button id="admin-clients-open" type="button">Comptes adhérents</button></div>
+        <button class="active" id="booking-open" type="button">Réserver un vol</button><button id="reservations-open" type="button">Mes réservations</button><button id="flight-dashboard-open" type="button">Cartes de vols</button><button id="rules-open" type="button">Règles LFR-333</button><button id="profile-nav" type="button">Mon profil</button><button id="admin-nav" type="button" aria-expanded="false" aria-controls="admin-subnav">Administrateur</button><div class="admin-subnav" id="admin-subnav" aria-label="Sous-menu administrateur" hidden><button id="admin-map-open" type="button">Carte et zones de vol</button><button id="admin-validation-open" type="button">Validation des demandes</button><button id="admin-information-open" type="button">Informations</button><button id="admin-calendar-open" type="button">Calendrier</button><button id="admin-clients-open" type="button">Comptes adhérents</button></div>
       </nav>
       <div class="pilot"><div class="pilot-head"><strong>Camille Martin</strong><button class="profile-icon" id="profile-open" type="button" aria-label="Ouvrir mon profil" title="Mon profil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.8-3.6 3.2-5.5 7-5.5s6.2 1.9 7 5.5"></path></svg></button></div><span class="pilot-company" id="pilot-company">Société non renseignée</span><span id="pilot-role">Pilote opérateur</span><span class="pilot-planned" id="pilot-planned">0 vol prévu cette semaine</span></div>
     </aside>
     <main class="main">
       <div class="top" id="booking-top"><div><h1>Réserver un espace de vol</h1><p class="sub">Choisissez une zone et un créneau disponible pour soumettre votre demande.</p></div><div class="role"><button id="toggle-admin" type="button" hidden>Passer en vue admin</button></div></div>
-      <section class="panel" id="profile-panel" hidden><div class="panelhead"><h2>Mon profil adhérant</h2><button class="approve" id="profile-close" type="button">Fermer</button></div><p class="invite-intro" id="invite-intro" hidden>Invitation de démonstration : complétez votre profil et choisissez un code. Ce code ne permet pas une vraie connexion.</p><form id="profile-form" class="formgrid"><div class="two"><label>Nom<input id="profile-name" value="Martin" required></label><label>Prénom<input id="profile-firstname" value="Camille" required></label></div><label>Société<input id="profile-company" placeholder="Ex. Aero Services"></label><label>Adresse e-mail<input id="profile-email" type="email" value="camille.martin@example.fr" required></label><label>Rôle<select id="profile-role"><option>Pilote opérateur</option><option>Responsable d'équipe</option><option>Administrateur de site</option></select></label><div><span class="small">Brevet drone</span><div class="certifications"><label class="check-option"><input type="checkbox" name="licence" value="Open A1"> Open A1</label><label class="check-option"><input type="checkbox" name="licence" value="Open A2"> Open A2</label><label class="check-option"><input type="checkbox" name="licence" value="Open A3"> Open A3</label><label class="check-option"><input type="checkbox" name="licence" value="CATS"> CATS</label></div></div><label class="document-field">Certificat de télépilote<input id="pilot-certificate" type="file" accept=".pdf,image/*"></label><label class="document-field">MANEX<input id="manex-file" type="file" accept=".pdf,.doc,.docx"></label><div class="drone-section"><div class="panelhead"><h2>Mes drones</h2><button class="approve" id="add-profile-drone" type="button">Ajouter un drone</button></div><div id="profile-drones" class="profile-drones"></div></div><div class="invite-code-fields" id="invite-code-fields" hidden><div class="two"><label>Créer un code de démonstration<input id="invite-code" type="password" autocomplete="new-password" minlength="6"></label><label>Confirmer le code<input id="invite-code-confirm" type="password" autocomplete="new-password" minlength="6"></label></div></div><button class="primary" type="submit">Enregistrer mon profil</button></form></section>
+      <section class="profile-view" id="profile-panel" hidden>
+        <form id="profile-form" class="profile-form-layout">
+          <section class="panel profile-card" aria-labelledby="profile-heading">
+            <div class="dashboard-heading"><h2 id="profile-heading">Mon profil adhérent</h2><button class="profile-close" id="profile-close" type="button">Fermer</button></div>
+            <div class="profile-card-body formgrid">
+              <p class="invite-intro" id="invite-intro" hidden>Invitation de démonstration : complétez votre profil et choisissez un code. Ce code ne permet pas une vraie connexion.</p>
+              <div class="two"><label>Nom<input id="profile-name" value="Martin" required></label><label>Prénom<input id="profile-firstname" value="Camille" required></label></div>
+              <label>Société<input id="profile-company" placeholder="Ex. Aero Services"></label>
+              <label>Adresse e-mail<input id="profile-email" type="email" value="camille.martin@example.fr" required></label>
+              <label>Rôle<select id="profile-role"><option>Pilote opérateur</option><option>Responsable d'équipe</option><option>Administrateur de site</option></select></label>
+              <div><span class="small">Brevet drone</span><div class="certifications"><label class="check-option"><input type="checkbox" name="licence" value="Open A1"> Open A1</label><label class="check-option"><input type="checkbox" name="licence" value="Open A2"> Open A2</label><label class="check-option"><input type="checkbox" name="licence" value="Open A3"> Open A3</label><label class="check-option"><input type="checkbox" name="licence" value="CATS"> CATS</label></div></div>
+              <label class="document-field">Certificat de télépilote<input id="pilot-certificate" type="file" accept=".pdf,image/*"></label>
+              <label class="document-field">MANEX<input id="manex-file" type="file" accept=".pdf,.doc,.docx"></label>
+              <div class="invite-code-fields" id="invite-code-fields" hidden><div class="two"><label>Créer un code de démonstration<input id="invite-code" type="password" autocomplete="new-password" minlength="6"></label><label>Confirmer le code<input id="invite-code-confirm" type="password" autocomplete="new-password" minlength="6"></label></div></div>
+            </div>
+          </section>
+          <section class="panel profile-card drone-section" aria-labelledby="drones-heading">
+            <div class="dashboard-heading"><h2 id="drones-heading">Mes drones</h2><button class="profile-add-drone" id="add-profile-drone" type="button">Ajouter un drone</button></div>
+            <div class="profile-card-body formgrid"><div id="profile-drones" class="profile-drones"></div><button class="primary" type="submit">Enregistrer mon profil</button></div>
+          </section>
+        </form>
+      </section>
       <section id="reservations-view" hidden><div class="panelhead"><div><h1>Mes réservations</h1><p class="sub">Vols en cours et réservations à venir.</p></div></div><section class="panel dashboard-card reservations-map-card"><div class="dashboard-heading"><h2>Carte de l’espace de vol</h2><span class="small">Centre d’Essais en Vol</span></div><div class="card-body"><div class="map" id="reservations-map" aria-label="Carte de l’espace de vol"></div></div></section><section class="panel requests dashboard-card"><div class="dashboard-heading"><h2>Réservations en cours</h2><span class="small">1 vol</span></div><div class="card-body"><div class="request"><div><strong>Zone Alpha - aujourd’hui</strong><span class="small">09:00 à 10:00 · Entraînement</span></div><span class="status ok">En cours</span></div></div></section><section class="panel requests dashboard-card"><div class="dashboard-heading"><h2>Réservations à venir</h2><span class="small">0 vol</span></div><div class="card-body"></div></section></section>
 <section id="flight-dashboard" hidden>
   <div class="panelhead"><div><h1>Tableau de bord des vols</h1><p class="sub">Suivi opérationnel et planning de l’espace de vol.</p></div></div>
@@ -292,7 +321,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=periodes-bloquees-20260927-1"></script>
+  <script src="app.js?v=profil-drones-20260927-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
