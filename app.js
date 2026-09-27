@@ -1309,7 +1309,7 @@
       const name = {
         'booking-open': 'booking', 'reservations-open': 'reservations',
         'flight-dashboard-open': 'dashboard', 'admin-nav': 'admin',
-        'rules-open': 'rules'
+        'rules-open': 'rules', 'profile-nav': 'profile'
       }[button.id];
       button.classList.toggle('active', name === view);
     });
@@ -1630,6 +1630,7 @@
   $('admin-clients-open').onclick = () => openAdmin('clients');
   $('exit-admin').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
+  $('profile-nav').onclick = () => setView('profile');
   $('booking-profile-link').onclick = () => setView('profile');
   $('profile-close').onclick = () => setView('booking');
   $('admin-info-form').onsubmit = event => {
