@@ -82,6 +82,20 @@
     #drone-booking-mock .admin-info-row button{flex:none;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:12px}
     #drone-booking-mock .admin-info-row.is-inactive{opacity:.65}
     @media(max-width:640px){#drone-booking-mock .admin-info-row{flex-direction:column}}
+    #drone-booking-mock .admin-calendar{display:grid;gap:16px}
+    #drone-booking-mock .admin-calendar>.panel{padding:0;overflow:hidden}
+    #drone-booking-mock #admin-blocked-count{color:#fff}
+    #drone-booking-mock .admin-calendar .formgrid label{display:grid;gap:6px;font-size:12px;font-weight:650;color:var(--ink)}
+    #drone-booking-mock .admin-blocked-list{padding:10px 16px 16px}
+    #drone-booking-mock .admin-blocked-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}
+    #drone-booking-mock .admin-blocked-row:first-child{border-top:0}
+    #drone-booking-mock .admin-blocked-row .small{display:block;margin-top:4px}
+    #drone-booking-mock #booking-request-heading{background:var(--selected-zone-color,#286178);color:var(--selected-zone-text,#fff)}
+    #drone-booking-mock #booking-request-heading h2,#drone-booking-mock #booking-request-heading .small{color:var(--selected-zone-text,#fff)}
+    #drone-booking-mock .admin-blocked-row button{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:12px}
+    #drone-booking-mock .calendar-slot.blocked{background:light-dark(#f4dce0,#51292e);color:light-dark(#973746,#f0abb5)}
+    #drone-booking-mock .month-day.blocked{background:light-dark(#f8e9eb,#4a292f);color:light-dark(#973746,#f0abb5);cursor:not-allowed}
+    #drone-booking-mock .month-day.blocked .day-hours{color:inherit;font-weight:700}
     #drone-booking-mock .invite-intro{margin:0 0 15px;padding:12px;border-radius:8px;background:var(--soft);color:var(--ink);font-size:12px}
     #drone-booking-mock .invite-code-fields{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft)}
     @media(max-width:640px){#drone-booking-mock .admin-client-row{grid-template-columns:1fr}#drone-booking-mock .admin-client-row a{justify-self:start}}
@@ -193,7 +207,7 @@
     <aside class="side">
       <div class="brand"><div class="brand-row"><svg class="brand-drone" viewBox="0 0 64 64" aria-hidden="true"><circle cx="13" cy="13" r="7"></circle><circle cx="51" cy="13" r="7"></circle><circle cx="13" cy="51" r="7"></circle><circle cx="51" cy="51" r="7"></circle><path d="M18 18 27 27m19-9-9 9M18 46l9-9m19 9-9-9"></path><rect x="26" y="26" width="12" height="12" rx="3"></rect><path d="M29 39v5m6-5v5"></path></svg><strong>AERO ZONE</strong></div><span class="brand-tagline">Gestion des espaces drone</span></div>
       <nav class="nav" aria-label="Navigation">
-        <button class="active" id="booking-open" type="button">Réserver un vol</button><button id="reservations-open" type="button">Mes réservations</button><button id="flight-dashboard-open" type="button">Cartes de vols</button><button id="rules-open" type="button">Règles LFR-333</button><button id="admin-nav" type="button" aria-expanded="false" aria-controls="admin-subnav">Administrateur</button><div class="admin-subnav" id="admin-subnav" aria-label="Sous-menu administrateur" hidden><button id="admin-map-open" type="button">Carte et zones de vol</button><button id="admin-validation-open" type="button">Validation des demandes</button><button id="admin-information-open" type="button">Informations</button><button id="admin-clients-open" type="button">Comptes adhérents</button></div>
+        <button class="active" id="booking-open" type="button">Réserver un vol</button><button id="reservations-open" type="button">Mes réservations</button><button id="flight-dashboard-open" type="button">Cartes de vols</button><button id="rules-open" type="button">Règles LFR-333</button><button id="admin-nav" type="button" aria-expanded="false" aria-controls="admin-subnav">Administrateur</button><div class="admin-subnav" id="admin-subnav" aria-label="Sous-menu administrateur" hidden><button id="admin-map-open" type="button">Carte et zones de vol</button><button id="admin-validation-open" type="button">Validation des demandes</button><button id="admin-information-open" type="button">Informations</button><button id="admin-calendar-open" type="button">Calendrier</button><button id="admin-clients-open" type="button">Comptes adhérents</button></div>
       </nav>
       <div class="pilot"><div class="pilot-head"><strong>Camille Martin</strong><button class="profile-icon" id="profile-open" type="button" aria-label="Ouvrir mon profil" title="Mon profil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.8-3.6 3.2-5.5 7-5.5s6.2 1.9 7 5.5"></path></svg></button></div><span class="pilot-company" id="pilot-company">Société non renseignée</span><span id="pilot-role">Pilote opérateur</span><span class="pilot-planned" id="pilot-planned">0 vol prévu cette semaine</span></div>
     </aside>
@@ -241,6 +255,10 @@
           <section class="panel"><div class="admin-banner"><h2>Informations</h2></div><div class="admin-client-body"><p class="small">Publiez une alerte qui apparaîtra dans le tableau de bord des vols. Dans cette maquette, elle reste enregistrée uniquement dans ce navigateur.</p><form class="formgrid" id="admin-info-form"><label>Titre<input id="admin-info-title" maxlength="100" placeholder="Ex. Message important" required></label><label>Texte<textarea id="admin-info-text" rows="5" maxlength="2000" placeholder="Rédigez votre message…" required></textarea></label><button class="primary" type="submit">Publier l’information</button></form></div></section>
           <section class="panel"><div class="admin-banner"><h2>Informations publiées</h2><span class="small" id="admin-info-count">0 information</span></div><div class="admin-info-list" id="admin-info-list"></div></section>
         </section>
+        <section class="admin-calendar" id="admin-calendar" hidden>
+          <section class="panel"><div class="admin-banner"><h2>Calendrier</h2></div><div class="admin-client-body"><p class="small">Bloquez une journée pour empêcher toute nouvelle demande de réservation. Les réservations déjà enregistrées ne sont pas supprimées.</p><form class="formgrid" id="admin-block-date-form"><label>Date à bloquer<input id="admin-block-date" type="date" required></label><button class="primary" type="submit">Bloquer cette date</button></form></div></section>
+          <section class="panel"><div class="admin-banner"><h2>Dates bloquées</h2><span class="small" id="admin-blocked-count">0 date</span></div><div class="admin-blocked-list" id="admin-blocked-list"></div></section>
+        </section>
         <section class="admin-clients" id="admin-clients" hidden><section class="panel"><div class="admin-banner"><h2>Créer un compte adhérent</h2></div><div class="admin-client-body"><p class="small">Maquette : les clients restent dans ce navigateur. L’invitation ouvre un brouillon d’e-mail à envoyer manuellement.</p><form id="client-form" class="formgrid"><div class="two"><label>Nom<input id="client-name" required></label><label>Prénom<input id="client-firstname" required></label></div><label>Société<input id="client-company"></label><label>Adresse e-mail<input id="client-email" type="email" required></label><button class="primary" type="submit">Créer le client</button></form></div></section><section class="panel"><div class="admin-banner"><h2>Clients déjà créés</h2><span class="small" id="client-count">0 client</span></div><div class="admin-client-list" id="client-list"></div></section></section>
       </section>
       <section class="rules-view" id="rules-view" hidden>
@@ -262,7 +280,7 @@
           <p class="calendar-hint">Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.</p><div class="calendar-scroller"><div id="booking-calendar" aria-live="polite"></div></div></div>
         </section>
         <aside>
-          <section class="panel dashboard-card booking-side-card"><div class="dashboard-heading"><h2>Nouvelle demande</h2><span class="small" id="zone-label">Zone Alpha</span></div><div class="card-body">
+          <section class="panel dashboard-card booking-side-card"><div class="dashboard-heading" id="booking-request-heading"><h2>Nouvelle demande</h2><span class="small" id="zone-label">Zone Alpha</span></div><div class="card-body">
             <form id="booking-form" class="formgrid"><label>Zone<select id="zone-select"><option>Zone Alpha</option><option>Zone Bravo</option><option>Zone Charlie</option></select></label><label>Objet du vol<select id="flight-purpose"><option>Entraînement</option><option>Prise de vues</option><option>Inspection</option><option>Démonstration</option><option>Validation machine</option></select></label><label>Type de machine<select id="flight-machine-kind" aria-describedby="machine-help"></select><span class="small" id="machine-help" hidden>Ajoutez d’abord un drone dans Mon profil adhérant.</span></label><button class="booking-profile-link" id="booking-profile-link" type="button" hidden>Renseigner un drone dans mon profil</button><label>Date<input id="booking-date" type="date" value="2026-09-24"></label><div class="two"><label>Début<select id="start"><option>09:00</option><option>11:00</option><option selected>14:00</option><option>15:00</option></select></label><label>Fin<select id="end"><option>10:00</option><option>12:00</option><option selected>15:00</option><option>16:00</option></select></label></div><button class="primary" type="submit">Envoyer la demande</button></form></div>
           </section>
           <section class="panel requests dashboard-card booking-side-card" id="reservations-panel"><div class="dashboard-heading"><h2>Mes réservations</h2><span class="small">Aujourd’hui et à venir</span></div><div class="card-body"><h3 class="small">En cours</h3><div id="current-requests"></div><h3 class="small" style="margin-top:17px">À venir</h3><div id="my-requests"></div></div></section>
@@ -271,7 +289,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=admin-informations-20260926-1"></script>
+  <script src="app.js?v=calendrier-zones-20260927-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
