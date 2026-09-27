@@ -35,6 +35,7 @@
   const reservationKey = 'aerozone-calendar-reservations';
   const clientKey = 'aerozone-demo-clients';
   const informationKey = 'aerozone-admin-information-v1';
+  const blockedDatesKey = 'aerozone-blocked-dates-v1';
   const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
   const center = [48.5951055, 2.3212347];
   // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
@@ -66,8 +67,10 @@
   const reservations = readReservations();
   const clients = readClients();
   const adminInfos = readAdminInfos();
+  const blockedDates = new Set(readBlockedDates());
   let calendarView = 'day';
   let calendarDate = parseDate($('booking-date').value) || new Date();
+  let lastBookableDate = $('booking-date').value;
 
   function notify(message) {
     const toast = $('toast');
@@ -201,6 +204,20 @@
     catch { notify('Impossible d’enregistrer cette information dans ce navigateur'); }
   }
 
+  function readBlockedDates() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(blockedDatesKey) || '[]');
+      return Array.isArray(saved) ? saved.filter(date => typeof date === 'string' && parseDate(date)) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveBlockedDates() {
+    try { localStorage.setItem(blockedDatesKey, JSON.stringify([...blockedDates].sort())); }
+    catch { notify('Impossible d’enregistrer les dates bloquées dans ce navigateur'); }
+  }
+
   function saveClients() {
     try { localStorage.setItem(clientKey, JSON.stringify(clients)); }
     catch { notify('Impossible d’enregistrer les clients dans ce navigateur'); }
@@ -221,6 +238,15 @@
 
   function dateAfter(date, days) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+  }
+
+  function nextOpenDate(date, step = 1) {
+    let candidate = date;
+    for (let i = 0; i < 366; i++) {
+      if (!blockedDates.has(isoDate(candidate))) return candidate;
+      candidate = dateAfter(candidate, step);
+    }
+    return null;
   }
 
   function mondayOf(date) {
@@ -256,6 +282,7 @@
   }
 
   function slotStatus(zone, date, hour) {
+    if (blockedDates.has(date)) return 'blocked';
     const start = hourText(hour);
     const end = hourText(hour + 1);
     const matches = reservations.filter(item => item.status !== 'rejected' && item.zone === zone && item.date === date &&
@@ -265,9 +292,12 @@
   }
 
   function selectCalendarSlot(zone, date, hour) {
+    if (blockedDates.has(date)) return;
     $('zone-select').value = zone;
     $('zone-label').textContent = zone;
+    updateBookingBannerColor(zone);
     $('booking-date').value = date;
+    lastBookableDate = date;
     $('start').value = hourText(hour);
     $('end').value = hourText(hour + 1);
     selectedZone = zone;
@@ -281,8 +311,10 @@
 
   function calendarSlot(zone, date, hour, compact = false) {
     const status = slotStatus(zone, date, hour);
-    const label = status === 'free' ? 'Libre' : status === 'pending' ? 'En attente' : 'Réservé';
-    const button = calendarElement('button', 'calendar-slot ' + status, compact ? hourText(hour).slice(0, 2) + 'h' : label);
+    const label = status === 'blocked' ? 'Bloqué' : status === 'free' ? 'Libre' :
+      status === 'pending' ? 'En attente' : 'Réservé';
+    const button = calendarElement('button', 'calendar-slot ' + status,
+      compact && status !== 'blocked' ? hourText(hour).slice(0, 2) + 'h' : label);
     button.type = 'button';
     button.title = zone + ' · ' + date + ' · ' + hourText(hour) + '–' + hourText(hour + 1) + ' · ' + label;
     button.setAttribute('aria-label', button.title);
@@ -308,7 +340,9 @@
     const title = $('availability-title');
     root.querySelector('.calendar-hint').textContent = calendarView === 'month' ?
       'Choisissez un jour pour afficher les créneaux de 08:00 à 19:00.' :
-      'Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.';
+      calendarView === 'day' && blockedDates.has(isoDate(calendarDate)) ?
+        'Cette date est bloquée par l’administrateur : aucune demande ne peut être faite.' :
+        'Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.';
     if (calendarView === 'day') title.textContent = 'Disponibilités du ' + shortDate(calendarDate);
     if (calendarView === 'week') {
       const monday = mondayOf(calendarDate);
@@ -335,16 +369,20 @@
         const count = reservations.filter(item => item.status !== 'rejected' && item.date === key && names.includes(item.zone)).length;
         const button = calendarElement('button', 'month-day' +
           (date.getMonth() !== first.getMonth() ? ' outside' : '') +
-          (key === isoDate(new Date()) ? ' today' : ''));
+          (key === isoDate(new Date()) ? ' today' : '') +
+          (blockedDates.has(key) ? ' blocked' : ''));
         button.type = 'button';
         button.append(calendarElement('span', 'day-number', String(date.getDate())),
-          calendarElement('span', 'day-hours', '08:00–19:00'));
+          calendarElement('span', 'day-hours', blockedDates.has(key) ? 'Date bloquée' : '08:00–19:00'));
         if (count) button.append(calendarElement('span', 'day-count', count + ' demande' + (count > 1 ? 's' : '')));
-        button.setAttribute('aria-label', shortDate(date) + (count ? ' · ' + count + ' demandes' : ' · libre de 08:00 à 19:00'));
+        button.setAttribute('aria-label', shortDate(date) + (blockedDates.has(key) ? ' · date bloquée' :
+          count ? ' · ' + count + ' demandes' : ' · libre de 08:00 à 19:00'));
+        button.disabled = blockedDates.has(key);
         button.onclick = () => {
           calendarDate = date;
           calendarView = 'day';
           $('booking-date').value = key;
+          lastBookableDate = key;
           renderCalendar();
         };
         grid.append(button);
@@ -690,6 +728,42 @@
     });
   }
 
+  function renderAdminCalendar() {
+    const list = $('admin-blocked-list');
+    list.replaceChildren();
+    $('admin-blocked-count').textContent = blockedDates.size + ' date' + (blockedDates.size > 1 ? 's' : '');
+    if (!blockedDates.size) {
+      list.append(calendarElement('p', 'empty', 'Aucune date bloquée.'));
+      return;
+    }
+    [...blockedDates].sort().forEach(date => {
+      const row = calendarElement('div', 'admin-blocked-row');
+      const detail = document.createElement('div');
+      detail.append(calendarElement('strong', '', reservationDate(parseDate(date))));
+      const existing = reservations.filter(item => item.date === date && item.status !== 'rejected').length;
+      if (existing) detail.append(calendarElement('span', 'small', existing + ' réservation' +
+        (existing > 1 ? 's' : '') + ' déjà enregistrée' + (existing > 1 ? 's' : '') + ' conservée' + (existing > 1 ? 's' : '')));
+      row.append(detail);
+      const button = calendarElement('button', '', 'Débloquer');
+      button.type = 'button';
+      button.dataset.blockedDate = date;
+      row.append(button);
+      list.append(row);
+    });
+  }
+
+  function refreshBlockedDates() {
+    const bookingDate = $('booking-date').value;
+    if (blockedDates.has(bookingDate)) {
+      const next = nextOpenDate(parseDate(bookingDate) || new Date());
+      if (next) $('booking-date').value = isoDate(next);
+    }
+    lastBookableDate = $('booking-date').value;
+    if (blockedDates.has(isoDate(calendarDate))) calendarDate = nextOpenDate(calendarDate) || calendarDate;
+    renderAdminCalendar();
+    renderCalendar();
+  }
+
   function currentFeatures() {
     return zones.getLayers().map(layer => layer.toGeoJSON());
   }
@@ -819,6 +893,22 @@
       $('zone-select').disabled ? 'Aucune zone de vol disponible.' : '';
   }
 
+  function updateBookingBannerColor(name) {
+    const heading = $('booking-request-heading');
+    const index = flightLayers().findIndex(layer => layer.feature.properties.name === name);
+    if (index < 0) {
+      heading.style.removeProperty('--selected-zone-color');
+      heading.style.removeProperty('--selected-zone-text');
+      return;
+    }
+    const color = palette[index % palette.length];
+    const channels = color.match(/[\da-f]{2}/gi).map(value => parseInt(value, 16) / 255);
+    const linear = channels.map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+    const luminance = linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
+    heading.style.setProperty('--selected-zone-color', color);
+    heading.style.setProperty('--selected-zone-text', 1.05 / (luminance + .05) >= 4.5 ? '#fff' : '#10212d');
+  }
+
   function refreshZoneSelect() {
     const select = $('zone-select');
     const previous = select.value;
@@ -832,6 +922,7 @@
       syncBookingSubmitState();
       $('zone-label').textContent = 'Aucune zone';
       selectedZone = '';
+      updateBookingBannerColor('');
       return;
     }
     select.disabled = false;
@@ -842,6 +933,7 @@
     });
     select.value = [...select.options].some(option => option.value === previous) ? previous : select.options[0].value;
     $('zone-label').textContent = select.value;
+    updateBookingBannerColor(select.value);
     if (selectedZone && !flights.some(layer => layer.feature.properties.name === selectedZone)) selectedZone = '';
   }
 
@@ -1010,17 +1102,21 @@
     const validation = section === 'validation';
     const clientSection = section === 'clients';
     const informationSection = section === 'information';
-    $('admin-map-panel').hidden = validation || clientSection || informationSection;
+    const calendarSection = section === 'calendar';
+    $('admin-map-panel').hidden = validation || clientSection || informationSection || calendarSection;
     $('admin-validation').hidden = !validation;
     $('admin-active-flights').hidden = !validation;
     $('admin-clients').hidden = !clientSection;
     $('admin-information').hidden = !informationSection;
-    $('admin-map-open').classList.toggle('active', !validation && !clientSection && !informationSection);
+    $('admin-calendar').hidden = !calendarSection;
+    $('admin-map-open').classList.toggle('active', !validation && !clientSection && !informationSection && !calendarSection);
     $('admin-validation-open').classList.toggle('active', validation);
     $('admin-information-open').classList.toggle('active', informationSection);
+    $('admin-calendar-open').classList.toggle('active', calendarSection);
     $('admin-clients-open').classList.toggle('active', clientSection);
     if (validation) renderAdminRequests();
     else if (informationSection) renderAdminInfos();
+    else if (calendarSection) renderAdminCalendar();
     else if (clientSection) renderClients();
     else requestAnimationFrame(() => map.invalidateSize());
   }
@@ -1474,12 +1570,17 @@
     } else if (event.key === informationKey) {
       adminInfos.splice(0, adminInfos.length, ...readAdminInfos());
       renderAdminInfos();
+    } else if (event.key === blockedDatesKey) {
+      blockedDates.clear();
+      readBlockedDates().forEach(date => blockedDates.add(date));
+      refreshBlockedDates();
     }
   });
   $('admin-nav').onclick = () => openAdmin('map');
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
   $('admin-information-open').onclick = () => openAdmin('information');
+  $('admin-calendar-open').onclick = () => openAdmin('calendar');
   $('admin-clients-open').onclick = () => openAdmin('clients');
   $('exit-admin').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
@@ -1512,6 +1613,34 @@
     saveAdminInfos();
     renderAdminInfos();
     notify(item.active ? 'Information réactivée.' : 'Information masquée.');
+  };
+  $('admin-block-date-form').onsubmit = event => {
+    event.preventDefault();
+    if (!adminAuthenticated) return;
+    const date = $('admin-block-date').value;
+    if (!parseDate(date)) {
+      notify('Choisissez une date valide.');
+      return;
+    }
+    if (blockedDates.has(date)) {
+      notify('Cette date est déjà bloquée.');
+      return;
+    }
+    blockedDates.add(date);
+    saveBlockedDates();
+    refreshBlockedDates();
+    $('admin-block-date-form').reset();
+    const existing = reservations.filter(item => item.date === date && item.status !== 'rejected').length;
+    notify('Date bloquée pour les nouvelles demandes.' +
+      (existing ? ' ' + existing + ' réservation' + (existing > 1 ? 's' : '') + ' déjà enregistrée' + (existing > 1 ? 's' : '') + ' conservée' + (existing > 1 ? 's' : '') + '.' : ''));
+  };
+  $('admin-blocked-list').onclick = event => {
+    const button = event.target.closest('button[data-blocked-date]');
+    if (!button || !adminAuthenticated) return;
+    blockedDates.delete(button.dataset.blockedDate);
+    saveBlockedDates();
+    refreshBlockedDates();
+    notify('Date débloquée : les demandes sont de nouveau possibles.');
   };
   $('client-form').onsubmit = event => {
     event.preventDefault();
@@ -1610,32 +1739,47 @@
     };
   });
   $('calendar-prev').onclick = () => {
-    calendarDate = calendarView === 'month'
+    const previous = calendarView === 'month'
       ? new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1)
       : dateAfter(calendarDate, calendarView === 'week' ? -7 : -1);
+    calendarDate = calendarView === 'day' ? nextOpenDate(previous, -1) || calendarDate : previous;
     renderCalendar();
   };
   $('calendar-next').onclick = () => {
-    calendarDate = calendarView === 'month'
+    const next = calendarView === 'month'
       ? new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1)
       : dateAfter(calendarDate, calendarView === 'week' ? 7 : 1);
+    calendarDate = calendarView === 'day' ? nextOpenDate(next) || calendarDate : next;
     renderCalendar();
   };
   $('calendar-today').onclick = () => {
-    calendarDate = new Date();
+    calendarDate = nextOpenDate(new Date()) || new Date();
     $('booking-date').value = isoDate(calendarDate);
+    lastBookableDate = $('booking-date').value;
     renderCalendar();
   };
   $('calendar-date').onchange = () => {
     const date = parseDate($('calendar-date').value);
     if (!date) return;
+    if (blockedDates.has(isoDate(date))) {
+      $('calendar-date').value = isoDate(calendarDate);
+      notify('Cette date est bloquée par l’administrateur.');
+      return;
+    }
     calendarDate = date;
     $('booking-date').value = isoDate(date);
+    lastBookableDate = $('booking-date').value;
     renderCalendar();
   };
   $('booking-date').onchange = () => {
     const date = parseDate($('booking-date').value);
     if (!date) return;
+    if (blockedDates.has(isoDate(date))) {
+      $('booking-date').value = lastBookableDate;
+      notify('Cette date est bloquée par l’administrateur.');
+      return;
+    }
+    lastBookableDate = isoDate(date);
     calendarDate = date;
     renderCalendar();
   };
@@ -1650,6 +1794,7 @@
   $('zone-select').onchange = () => {
     selectedZone = $('zone-select').value;
     $('zone-label').textContent = selectedZone;
+    updateBookingBannerColor(selectedZone);
     refreshMainMap();
     renderCalendar();
     focusBookingZone(selectedZone);
@@ -1672,6 +1817,10 @@
     }
     if (!parseDate(date) || start < '08:00' || end > '19:00' || start >= end) {
       notify('Choisissez une date et un horaire entre 08:00 et 19:00');
+      return;
+    }
+    if (blockedDates.has(date)) {
+      notify('Cette date est bloquée par l’administrateur. Choisissez un autre jour.');
       return;
     }
     if (reservations.some(item => item.status !== 'rejected' && item.zone === zone && item.date === date && item.start < end && item.end > start)) {
@@ -1800,5 +1949,6 @@
   }
   displayedFeatures.forEach(addFeature);
   refreshAll();
+  refreshBlockedDates();
   map.setView(siteViewCenter(), siteViewZoom);
 })();
