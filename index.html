@@ -113,6 +113,9 @@
     #drone-booking-mock #booking-request-heading h2,#drone-booking-mock #booking-request-heading .small{color:var(--selected-zone-text,#fff)}
     #drone-booking-mock .admin-blocked-row button{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:12px}
     #drone-booking-mock .calendar-slot.blocked{background:light-dark(#f4dce0,#51292e);color:light-dark(#973746,#f0abb5)}
+    #drone-booking-mock .calendar-slot.has-company{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:48px;padding:4px 3px;line-height:1.15;white-space:normal}
+    #drone-booking-mock .calendar-slot-company{display:block;width:100%;color:light-dark(#8a3f72,#f1b8dd);font-size:9px;font-weight:700;overflow-wrap:anywhere}
+    #drone-booking-mock .week-slots .calendar-slot.has-company{min-height:64px}
     #drone-booking-mock .month-day.blocked{background:light-dark(#f8e9eb,#4a292f);color:light-dark(#973746,#f0abb5)}
     #drone-booking-mock .month-day.blocked .day-hours{color:inherit;font-weight:700}
     #drone-booking-mock .month-day .blocked-day-title{color:inherit;font-size:10px;font-weight:700;white-space:normal;overflow-wrap:anywhere}
@@ -344,7 +347,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=drones-informations-dates-20261002-1"></script>
+  <script src="app.js?v=calendrier-societe-reservation-20261002-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
