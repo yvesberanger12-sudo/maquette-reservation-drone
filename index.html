@@ -44,14 +44,23 @@
     #drone-booking-mock .profile-card{padding:0;overflow:hidden}
     #drone-booking-mock .profile-card .dashboard-heading{margin:0!important}
     #drone-booking-mock .profile-card-body{padding:18px}
-    #drone-booking-mock .profile-card .profile-close,#drone-booking-mock .profile-card .profile-add-drone{border:1px solid #ffffff99;border-radius:7px;background:#fff;color:#286178;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer}
-    #drone-booking-mock .profile-card .profile-close:hover,#drone-booking-mock .profile-card .profile-add-drone:hover{background:#eaf3f6}
+    #drone-booking-mock .profile-card .profile-close{border:1px solid #ffffff99;border-radius:7px;background:#fff;color:#286178;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer}
+    #drone-booking-mock .profile-card .profile-close:hover{background:#eaf3f6}
+    #drone-booking-mock .profile-card .profile-add-drone{justify-self:start;border:0;border-radius:7px;background:#286178;color:#fff;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer}
+    #drone-booking-mock .profile-card .profile-add-drone:hover{filter:brightness(1.1)}
     #drone-booking-mock .profile-card.drone-section{display:block;margin:0}
     @media(max-width:640px){#drone-booking-mock .profile-card-body{padding:14px}#drone-booking-mock .profile-card .dashboard-heading{flex-wrap:wrap}}
-    #drone-booking-mock .drone-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:9px;background:var(--soft)}
-    #drone-booking-mock .drone-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    #drone-booking-mock .drone-card-head strong{font-size:13px;color:var(--ink)}
-    #drone-booking-mock .drone-card-head button{margin:0;color:#a22e29}
+    #drone-booking-mock .drone-card{border:1px solid var(--line);border-radius:9px;background:var(--soft);overflow:hidden}
+    #drone-booking-mock .drone-card-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:12px 14px;color:var(--ink);font-size:13px;list-style:none}
+    #drone-booking-mock .drone-card-summary::-webkit-details-marker{display:none}
+    #drone-booking-mock .drone-card-summary::after{content:'Modifier ▾';color:#286178;font-size:12px;font-weight:700;white-space:nowrap}
+    #drone-booking-mock .drone-card[open] .drone-card-summary::after{content:'Fermer ▴'}
+    #drone-booking-mock .drone-card-title{display:block;font-weight:700}
+    #drone-booking-mock .drone-card-description{display:block;margin-top:3px;color:var(--muted);font-size:11px}
+    #drone-booking-mock .drone-card-fields{display:grid;gap:10px;padding:14px;border-top:1px solid var(--line)}
+    #drone-booking-mock .drone-remove{justify-self:start;color:#a22e29}
+    #drone-booking-mock .new-drone-section{display:grid;gap:12px;border-top:1px solid var(--line);padding-top:18px}
+    #drone-booking-mock .new-drone-section h3{margin:0;font-size:14px;color:var(--ink)}
     #drone-booking-mock #machine-help{display:block;margin-top:3px}
     @media(max-width:640px){#drone-booking-mock .drone-card .two{grid-template-columns:1fr}}
     #drone-booking-mock .leaflet-overlay-pane path.aerozone-hover-zone{transform-box:fill-box;transform-origin:center;transition:transform .18s ease,filter .18s ease}
@@ -233,6 +242,7 @@
               <div class="two"><label>Nom<input id="profile-name" value="Martin" required></label><label>Prénom<input id="profile-firstname" value="Camille" required></label></div>
               <label>Société<input id="profile-company" placeholder="Ex. Aero Services"></label>
               <label>Adresse e-mail<input id="profile-email" type="email" value="camille.martin@example.fr" required></label>
+              <label>Numéro de téléphone<input id="profile-phone" type="tel" autocomplete="tel" placeholder="Ex. 06 12 34 56 78"></label>
               <label>Rôle<select id="profile-role"><option>Pilote opérateur</option><option>Responsable d'équipe</option><option>Administrateur de site</option></select></label>
               <div><span class="small">Brevet drone</span><div class="certifications"><label class="check-option"><input type="checkbox" name="licence" value="Open A1"> Open A1</label><label class="check-option"><input type="checkbox" name="licence" value="Open A2"> Open A2</label><label class="check-option"><input type="checkbox" name="licence" value="Open A3"> Open A3</label><label class="check-option"><input type="checkbox" name="licence" value="CATS"> CATS</label></div></div>
               <label class="document-field">Certificat de télépilote<input id="pilot-certificate" type="file" accept=".pdf,image/*"></label>
@@ -241,8 +251,20 @@
             </div>
           </section>
           <section class="panel profile-card drone-section" aria-labelledby="drones-heading">
-            <div class="dashboard-heading"><h2 id="drones-heading">Mes drones</h2><button class="profile-add-drone" id="add-profile-drone" type="button">Ajouter un drone</button></div>
-            <div class="profile-card-body formgrid"><div id="profile-drones" class="profile-drones"></div><button class="primary" type="submit">Enregistrer mon profil</button></div>
+            <div class="dashboard-heading"><h2 id="drones-heading">Mes drones</h2></div>
+            <div class="profile-card-body formgrid">
+              <div id="profile-drones" class="profile-drones" aria-label="Liste de mes drones"></div>
+              <div class="new-drone-section" aria-labelledby="new-drone-heading">
+                <h3 id="new-drone-heading">Créer un nouveau drone</h3>
+                <div class="formgrid">
+                  <div class="two"><label>Type de machine<select id="new-drone-kind"><option>Drone</option><option>Aéronef télépiloté</option><option>Autre</option></select></label><label>Marque<input id="new-drone-brand" placeholder="Ex. DJI"></label></div>
+                  <div class="two"><label>Type ou modèle de drone<input id="new-drone-model" placeholder="Ex. Mavic 3 Enterprise"></label><label>Classe du drone<select id="new-drone-class"><option value="">Non renseignée</option><option>C0</option><option>C1</option><option>C2</option><option>C3</option><option>C4</option><option>C5</option><option>C6</option><option>Sans classe</option></select></label></div>
+                  <label>Poids (g)<input id="new-drone-weight" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 900"></label>
+                  <button class="profile-add-drone" id="add-profile-drone" type="button">Ajouter à la liste</button>
+                </div>
+              </div>
+              <button class="primary" type="submit">Enregistrer mon profil</button>
+            </div>
           </section>
         </form>
       </section>
@@ -321,7 +343,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=alertes-sans-compteur-20261002-1"></script>
+  <script src="app.js?v=profil-telephone-drones-20261002-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
