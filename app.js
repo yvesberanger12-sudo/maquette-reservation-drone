@@ -752,7 +752,6 @@
     const list = $('dashboard-admin-alerts');
     list.replaceChildren();
     const active = adminInfos.filter(item => item.active !== false);
-    $('dashboard-alert-count').textContent = (active.length + 1) + ' à suivre';
     active.forEach(item => {
       const row = calendarElement('div', 'alert-item');
       const dot = calendarElement('i', 'alert-dot info');
