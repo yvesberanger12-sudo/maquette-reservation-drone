@@ -310,7 +310,7 @@
         <section class="panel admin-validation" id="admin-validation" hidden><div class="admin-banner"><h2>Validation des demandes</h2><span class="small" id="admin-request-count">0 demande</span></div><div class="admin-request-list" id="admin-request-list"></div></section>
         <section class="panel admin-validation admin-active-flights" id="admin-active-flights" hidden><div class="admin-banner"><h2>Vols en cours</h2><span class="small" id="admin-active-flight-count">0 vol</span></div><div class="admin-request-list" id="admin-active-flight-list"></div></section>
         <section class="admin-information" id="admin-information" hidden>
-          <section class="panel"><div class="admin-banner"><h2>Informations</h2></div><div class="admin-client-body"><p class="small">Publiez une alerte visible dans le tableau de bord des vols entre les dates indiquées. Dans cette maquette, elle reste enregistrée uniquement dans ce navigateur.</p><form class="formgrid" id="admin-info-form"><label>Titre<input id="admin-info-title" maxlength="100" placeholder="Ex. Message important" required></label><label>Texte<textarea id="admin-info-text" rows="5" maxlength="2000" placeholder="Rédigez votre message…" required></textarea></label><div class="two"><label>Date de début<input id="admin-info-start" type="date" required></label><label>Date de fin<input id="admin-info-end" type="date" required></label></div><button class="primary" type="submit">Publier l’information</button></form></div></section>
+          <section class="panel"><div class="admin-banner"><h2>Informations</h2></div><div class="admin-client-body"><p class="small">Publiez une alerte immédiatement dans le tableau de bord des vols. Les dates seront indiquées dans le message. Dans cette maquette, elle reste enregistrée uniquement dans ce navigateur.</p><form class="formgrid" id="admin-info-form"><label>Titre<input id="admin-info-title" maxlength="100" placeholder="Ex. Message important" required></label><label>Texte<textarea id="admin-info-text" rows="5" maxlength="2000" placeholder="Rédigez votre message…" required></textarea></label><div class="two"><label>Date de début<input id="admin-info-start" type="date" required></label><label>Date de fin<input id="admin-info-end" type="date" required></label></div><button class="primary" type="submit">Publier l’information</button></form></div></section>
           <section class="panel"><div class="admin-banner"><h2>Informations publiées</h2><span class="small" id="admin-info-count">0 information</span></div><div class="admin-info-list" id="admin-info-list"></div></section>
         </section>
         <section class="admin-calendar" id="admin-calendar" hidden>
@@ -347,7 +347,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=calendrier-societe-reservation-20261002-1"></script>
+  <script src="app.js?v=alertes-immediates-20261002-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
