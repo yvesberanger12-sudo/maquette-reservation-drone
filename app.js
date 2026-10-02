@@ -726,6 +726,17 @@
     });
   }
 
+  function adminInfoTiming(item) {
+    if (!item.startDate && !item.endDate) return 'current';
+    const start = parseDate(item.startDate);
+    const end = parseDate(item.endDate);
+    if (!start || !end || end < start) return 'invalid';
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
+    if (today < item.startDate) return 'upcoming';
+    if (today > item.endDate) return 'expired';
+    return 'current';
+  }
+
   function renderAdminInfos() {
     const list = $('admin-info-list');
     list.replaceChildren();
@@ -736,9 +747,20 @@
     adminInfos.forEach(item => {
       const row = calendarElement('div', 'admin-info-row' + (item.active === false ? ' is-inactive' : ''));
       const detail = document.createElement('div');
+      const timing = adminInfoTiming(item);
+      const status = item.active === false ? 'Masquée aux adhérents' :
+        timing === 'upcoming' ? 'Programmée' :
+        timing === 'expired' ? 'Terminée' :
+        timing === 'invalid' ? 'Dates à corriger' : 'Visible dans les alertes';
       detail.append(calendarElement('strong', '', item.title),
-        calendarElement('p', '', item.text),
-        calendarElement('span', 'small', item.active === false ? 'Masquée aux adhérents' : 'Visible dans les alertes'));
+        calendarElement('p', '', item.text));
+      if (item.startDate && item.endDate) {
+        const start = parseDate(item.startDate);
+        const end = parseDate(item.endDate);
+        detail.append(calendarElement('span', 'small', start && end ?
+          reservationDate(start) + ' — ' + reservationDate(end) : 'Dates invalides'));
+      }
+      detail.append(calendarElement('span', 'small', status));
       const toggle = calendarElement('button', '', item.active === false ? 'Réactiver' : 'Masquer');
       toggle.type = 'button';
       toggle.dataset.infoId = item.id;
@@ -751,7 +773,7 @@
   function renderDashboardAdminAlerts() {
     const list = $('dashboard-admin-alerts');
     list.replaceChildren();
-    const active = adminInfos.filter(item => item.active !== false);
+    const active = adminInfos.filter(item => item.active !== false && adminInfoTiming(item) === 'current');
     active.forEach(item => {
       const row = calendarElement('div', 'alert-item');
       const dot = calendarElement('i', 'alert-dot info');
@@ -1328,6 +1350,7 @@
       }
       requestAnimationFrame(fitDashboardMap);
       renderFlightStartValidation();
+      renderDashboardAdminAlerts();
       loadDashboardWeather();
     }
     requestAnimationFrame(() => map.invalidateSize());
@@ -1479,16 +1502,19 @@
   }
 
   function renumberDroneCards() {
-    root.querySelectorAll('#profile-drones .drone-card').forEach((card, index) => {
-      card.querySelector('.drone-card-title').textContent = 'Drone ' + (index + 1);
-    });
+    root.querySelectorAll('#profile-drones .drone-card').forEach(updateDroneSummary);
   }
 
   function updateDroneSummary(card) {
     const brand = card.querySelector('[data-drone-field="brand"]').value.trim();
     const model = card.querySelector('[data-drone-field="model"]').value.trim();
+    const machineKind = card.querySelector('[data-drone-field="machineKind"]').value;
+    const droneClass = card.querySelector('[data-drone-field="droneClass"]').value;
+    const weight = card.querySelector('[data-drone-field="weightGrams"]').value.trim();
+    card.querySelector('.drone-card-title').textContent =
+      [brand, model].filter(Boolean).join(' · ') || 'Drone sans nom';
     card.querySelector('.drone-card-description').textContent =
-      [brand, model].filter(Boolean).join(' · ') || 'Modèle à renseigner';
+      [machineKind, droneClass && 'Classe ' + droneClass, weight && weight + ' g'].filter(Boolean).join(' · ');
   }
 
   function addDroneCard(drone = {}) {
@@ -1505,7 +1531,7 @@
       const input = card.querySelector(`[data-drone-field="${field}"]`);
       if (drone[field] !== undefined && drone[field] !== null) input.value = String(drone[field]);
     }
-    for (const field of ['brand', 'model'])
+    for (const field of ['machineKind', 'brand', 'model', 'droneClass', 'weightGrams'])
       card.querySelector(`[data-drone-field="${field}"]`).addEventListener('input', () => updateDroneSummary(card));
     updateDroneSummary(card);
     card.querySelector('.drone-remove').onclick = () => {
@@ -1674,22 +1700,34 @@
   $('profile-nav').onclick = () => setView('profile');
   $('booking-profile-link').onclick = () => setView('profile');
   $('profile-close').onclick = () => setView('booking');
+  $('admin-info-start').onchange = () => {
+    $('admin-info-end').min = $('admin-info-start').value;
+    if ($('admin-info-end').value && $('admin-info-end').value < $('admin-info-start').value)
+      $('admin-info-end').value = $('admin-info-start').value;
+  };
   $('admin-info-form').onsubmit = event => {
     event.preventDefault();
     if (!adminAuthenticated) return;
     const title = $('admin-info-title').value.trim();
     const message = $('admin-info-text').value.trim();
+    const startDate = $('admin-info-start').value;
+    const endDate = $('admin-info-end').value;
     if (!title || !message) {
       notify('Renseignez le titre et le texte de l’information.');
       return;
     }
+    if (!parseDate(startDate) || !parseDate(endDate) || endDate < startDate) {
+      notify('Choisissez une date de début et une date de fin valide.');
+      return;
+    }
     adminInfos.unshift({
       id: 'info-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
-      title, text: message, active: true
+      title, text: message, startDate, endDate, active: true
     });
     saveAdminInfos();
     renderAdminInfos();
     $('admin-info-form').reset();
+    $('admin-info-end').min = '';
     notify('Information publiée dans les alertes de cette maquette.');
   };
   $('admin-info-list').onclick = event => {
