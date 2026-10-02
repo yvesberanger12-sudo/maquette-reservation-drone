@@ -743,17 +743,6 @@
     });
   }
 
-  function adminInfoTiming(item) {
-    if (!item.startDate && !item.endDate) return 'current';
-    const start = parseDate(item.startDate);
-    const end = parseDate(item.endDate);
-    if (!start || !end || end < start) return 'invalid';
-    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris' }).format(new Date());
-    if (today < item.startDate) return 'upcoming';
-    if (today > item.endDate) return 'expired';
-    return 'current';
-  }
-
   function renderAdminInfos() {
     const list = $('admin-info-list');
     list.replaceChildren();
@@ -764,11 +753,7 @@
     adminInfos.forEach(item => {
       const row = calendarElement('div', 'admin-info-row' + (item.active === false ? ' is-inactive' : ''));
       const detail = document.createElement('div');
-      const timing = adminInfoTiming(item);
-      const status = item.active === false ? 'Masquée aux adhérents' :
-        timing === 'upcoming' ? 'Programmée' :
-        timing === 'expired' ? 'Terminée' :
-        timing === 'invalid' ? 'Dates à corriger' : 'Visible dans les alertes';
+      const status = item.active === false ? 'Masquée aux adhérents' : 'Visible dans les alertes';
       detail.append(calendarElement('strong', '', item.title),
         calendarElement('p', '', item.text));
       if (item.startDate && item.endDate) {
@@ -790,7 +775,7 @@
   function renderDashboardAdminAlerts() {
     const list = $('dashboard-admin-alerts');
     list.replaceChildren();
-    const active = adminInfos.filter(item => item.active !== false && adminInfoTiming(item) === 'current');
+    const active = adminInfos.filter(item => item.active !== false);
     active.forEach(item => {
       const row = calendarElement('div', 'alert-item');
       const dot = calendarElement('i', 'alert-dot info');
@@ -798,6 +783,12 @@
       const content = calendarElement('div', 'alert-content');
       content.append(calendarElement('strong', '', item.title),
         calendarElement('p', 'admin-alert-text', item.text));
+      if (item.startDate && item.endDate) {
+        const start = parseDate(item.startDate);
+        const end = parseDate(item.endDate);
+        if (start && end) content.append(calendarElement('span', 'small',
+          reservationDate(start) + ' — ' + reservationDate(end)));
+      }
       row.append(dot, content);
       list.append(row);
     });
