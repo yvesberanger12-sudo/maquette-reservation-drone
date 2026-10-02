@@ -320,6 +320,13 @@
     return matches.length ? 'pending' : 'free';
   }
 
+  function reservationForSlot(zone, date, hour, status) {
+    const start = hourText(hour);
+    const end = hourText(hour + 1);
+    return reservations.find(item => item.status === status && item.zone === zone && item.date === date &&
+      item.start < end && item.end > start);
+  }
+
   function selectCalendarSlot(zone, date, hour) {
     if (blockedDates.has(date)) return;
     $('zone-select').value = zone;
@@ -342,11 +349,21 @@
     const status = slotStatus(zone, date, hour);
     const label = status === 'blocked' ? 'Bloqué' : status === 'free' ? 'Libre' :
       status === 'pending' ? 'En attente' : 'Réservé';
-    const button = calendarElement('button', 'calendar-slot ' + status,
-      compact && status !== 'blocked' ? hourText(hour).slice(0, 2) + 'h' : label);
+    const reservation = status === 'confirmed' || status === 'pending' ?
+      reservationForSlot(zone, date, hour, status) : null;
+    const company = reservation ? reservationCompany(reservation) : '';
+    const button = calendarElement('button', 'calendar-slot ' + status + (company ? ' has-company' : ''));
+    if (company) {
+      if (compact) button.append(calendarElement('span', 'calendar-slot-hour', hourText(hour).slice(0, 2) + 'h'));
+      button.append(calendarElement('span', 'calendar-slot-status', label),
+        calendarElement('span', 'calendar-slot-company', company));
+    } else {
+      button.textContent = compact && status !== 'blocked' ? hourText(hour).slice(0, 2) + 'h' : label;
+    }
     button.type = 'button';
     button.title = zone + ' · ' + date + ' · ' + hourText(hour) + '–' + hourText(hour + 1) +
-      ' · ' + (status === 'blocked' ? 'Bloqué : ' + blockedTitles.get(date) : label);
+      ' · ' + (status === 'blocked' ? 'Bloqué : ' + blockedTitles.get(date) : label) +
+      (company ? ' · Société : ' + company : '');
     button.setAttribute('aria-label', button.title);
     button.disabled = status !== 'free';
     if (zone === $('zone-select').value && date === $('booking-date').value && hourText(hour) === $('start').value)
