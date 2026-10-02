@@ -1484,19 +1484,30 @@
     });
   }
 
+  function updateDroneSummary(card) {
+    const brand = card.querySelector('[data-drone-field="brand"]').value.trim();
+    const model = card.querySelector('[data-drone-field="model"]').value.trim();
+    card.querySelector('.drone-card-description').textContent =
+      [brand, model].filter(Boolean).join(' · ') || 'Modèle à renseigner';
+  }
+
   function addDroneCard(drone = {}) {
     $('profile-drones').querySelector('.empty')?.remove();
-    const card = document.createElement('div');
+    const card = document.createElement('details');
     card.className = 'drone-card';
     card.dataset.droneId = drone.id || newDroneId();
-    card.innerHTML = `<div class="drone-card-head"><strong class="drone-card-title"></strong><button class="approve drone-remove" type="button">Retirer</button></div>
+    card.innerHTML = `<summary class="drone-card-summary"><span><strong class="drone-card-title"></strong><span class="drone-card-description"></span></span></summary><div class="drone-card-fields">
       <div class="two"><label>Type de machine<select data-drone-field="machineKind"><option>Drone</option><option>Aéronef télépiloté</option><option>Autre</option></select></label><label>Marque<input data-drone-field="brand" placeholder="Ex. DJI"></label></div>
       <div class="two"><label>Type ou modèle de drone<input data-drone-field="model" placeholder="Ex. Mavic 3 Enterprise"></label><label>Classe du drone<select data-drone-field="droneClass"><option value="">Non renseignée</option><option>C0</option><option>C1</option><option>C2</option><option>C3</option><option>C4</option><option>C5</option><option>C6</option><option>Sans classe</option></select></label></div>
-      <label>Poids (g)<input data-drone-field="weightGrams" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 900"></label>`;
+      <label>Poids (g)<input data-drone-field="weightGrams" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 900"></label>
+      <button class="approve drone-remove" type="button">Retirer ce drone</button></div>`;
     for (const field of ['machineKind', 'brand', 'model', 'droneClass', 'weightGrams']) {
       const input = card.querySelector(`[data-drone-field="${field}"]`);
       if (drone[field] !== undefined && drone[field] !== null) input.value = String(drone[field]);
     }
+    for (const field of ['brand', 'model'])
+      card.querySelector(`[data-drone-field="${field}"]`).addEventListener('input', () => updateDroneSummary(card));
+    updateDroneSummary(card);
     card.querySelector('.drone-remove').onclick = () => {
       card.remove();
       renumberDroneCards();
@@ -1509,8 +1520,38 @@
   function renderDroneCards(drones) {
     $('profile-drones').replaceChildren();
     if (!drones.length) $('profile-drones').append(calendarElement('p', 'empty',
-      'Aucun drone enregistré. Cliquez sur « Ajouter un drone ».'));
+      'Aucun drone enregistré. Utilisez le formulaire ci-dessous pour en ajouter un.'));
     drones.forEach(addDroneCard);
+  }
+
+  function newDroneDraft() {
+    return {
+      machineKind: $('new-drone-kind').value,
+      brand: $('new-drone-brand').value.trim(),
+      model: $('new-drone-model').value.trim(),
+      droneClass: $('new-drone-class').value,
+      weightGrams: $('new-drone-weight').value.trim()
+    };
+  }
+
+  function hasNewDroneDraft(drone) {
+    return drone.machineKind !== 'Drone' || Boolean(drone.brand || drone.model ||
+      drone.droneClass || drone.weightGrams);
+  }
+
+  function addNewDroneDraft() {
+    const draft = newDroneDraft();
+    if (!draft.model) {
+      notify('Renseignez le type ou modèle du nouveau drone.');
+      $('new-drone-model').focus();
+      return false;
+    }
+    addDroneCard(draft);
+    for (const id of ['new-drone-brand', 'new-drone-model', 'new-drone-weight']) $(id).value = '';
+    $('new-drone-kind').value = 'Drone';
+    $('new-drone-class').value = '';
+    notify('Drone ajouté à la liste. Enregistrez le profil pour conserver la modification.');
+    return true;
   }
 
   function syncBookingDrones(drones) {
@@ -1531,7 +1572,7 @@
 
   function loadProfile() {
     if (inviteMode) {
-      for (const id of ['profile-name', 'profile-firstname', 'profile-company', 'profile-email'])
+      for (const id of ['profile-name', 'profile-firstname', 'profile-company', 'profile-email', 'profile-phone'])
         $(id).value = '';
       $('profile-role').value = 'Pilote opérateur';
       root.querySelectorAll('input[name="licence"]').forEach(input => { input.checked = false; });
@@ -1546,7 +1587,7 @@
       try { saved = JSON.parse(localStorage.getItem('aerozone-profile-backup') || 'null'); } catch {}
     }
     if (!saved) {
-      for (const id of ['profile-name', 'profile-firstname', 'profile-company', 'profile-email'])
+      for (const id of ['profile-name', 'profile-firstname', 'profile-company', 'profile-email', 'profile-phone'])
         $(id).value = '';
       root.querySelector('.pilot strong').textContent = 'Profil non enregistré';
       $('pilot-company').textContent = 'Aucune société enregistrée';
@@ -1558,6 +1599,7 @@
     $('profile-firstname').value = saved.firstname || '';
     $('profile-company').value = saved.company || '';
     $('profile-email').value = saved.email || '';
+    $('profile-phone').value = saved.phone || '';
     const role = saved.role === 'Responsable d équipe' ? "Responsable d'équipe" :
       (saved.role || 'Pilote opérateur');
     $('profile-role').value = role;
@@ -1721,10 +1763,7 @@
     $('client-form').reset();
     notify('Client ajouté. Préparez puis envoyez son invitation par e-mail.');
   };
-  $('add-profile-drone').onclick = () => {
-    const card = addDroneCard();
-    card.querySelector('[data-drone-field="model"]').focus();
-  };
+  $('add-profile-drone').onclick = addNewDroneDraft;
   $('edit-main-zone').onclick = enterMainEdit;
   $('delete-main-points').onclick = showDeletePoints;
   $('edit-flight-zones').onclick = enterFlightEdit;
@@ -1907,6 +1946,8 @@
 
   $('profile-form').onsubmit = event => {
     event.preventDefault();
+    const draft = newDroneDraft();
+    if (hasNewDroneDraft(draft) && !addNewDroneDraft()) return;
     const drones = [...root.querySelectorAll('#profile-drones .drone-card')].map(card => {
       const value = field => card.querySelector(`[data-drone-field="${field}"]`).value.trim();
       return {
@@ -1923,6 +1964,7 @@
     const profile = {
       name: $('profile-name').value, firstname: $('profile-firstname').value,
       company: $('profile-company').value, email: $('profile-email').value,
+      phone: $('profile-phone').value.trim(),
       role: $('profile-role').value,
       licences: [...root.querySelectorAll('input[name="licence"]:checked')].map(input => input.value),
       drones
