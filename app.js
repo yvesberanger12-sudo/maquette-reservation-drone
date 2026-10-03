@@ -66,6 +66,7 @@
   const mirrorMaps = new Map();
   const reservations = readReservations();
   const clients = readClients();
+  let selectedClientId = null;
   const adminInfos = readAdminInfos();
   const blockedPeriods = readBlockedPeriods();
   const blockedDates = new Set();
@@ -714,22 +715,48 @@
     });
   }
 
+  function savedProfileForClient(client) {
+    for (const key of ['aerozone-profile', 'aerozone-demo-invite-profile']) {
+      try {
+        const candidate = JSON.parse(localStorage.getItem(key) || 'null');
+        if (candidate?.email?.trim().toLowerCase() === client.email.toLowerCase()) return candidate;
+      } catch {}
+    }
+    return null;
+  }
+
   function renderClients() {
     const list = $('client-list');
     list.replaceChildren();
-    $('client-count').textContent = clients.length + ' client' + (clients.length > 1 ? 's' : '');
+    $('client-count').textContent = clients.length + ' adhérent' + (clients.length > 1 ? 's' : '');
     if (!clients.length) {
-      list.append(calendarElement('p', 'empty', 'Aucun client créé dans ce navigateur.'));
+      list.append(calendarElement('p', 'empty', 'Aucun adhérent créé dans ce navigateur.'));
+      $('admin-member-panel').hidden = true;
       return;
     }
     const invitationUrl = new URL(window.location.href);
     invitationUrl.search = '?invitation=1';
     invitationUrl.hash = '';
     clients.forEach(client => {
+      const profile = savedProfileForClient(client);
       const row = calendarElement('div', 'admin-client-row');
       const detail = document.createElement('div');
-      detail.append(calendarElement('strong', '', [client.firstname, client.name].filter(Boolean).join(' ')),
-        calendarElement('span', 'small', [client.company, client.email].filter(Boolean).join(' · ')));
+      detail.append(calendarElement('strong', '',
+        [client.firstname, client.name].filter(Boolean).join(' ') +
+        ((profile?.company || client.company) ? ' - ' + (profile?.company || client.company) : '')),
+        calendarElement('span', 'small', [profile?.phone || client.phone || 'Téléphone non renseigné',
+          client.email].join(' · ')));
+      const state = client.status === 'approved' ? 'approved' : client.status === 'revoked' ? 'revoked' : 'pending';
+      detail.append(calendarElement('span', 'admin-client-status ' + state,
+        state === 'approved' ? 'Inscription validée' : state === 'revoked' ? 'Révoqué' : 'À valider'));
+      const actions = calendarElement('div', 'admin-client-actions');
+      const open = calendarElement('button', '', 'Voir la fiche');
+      open.type = 'button';
+      open.onclick = () => {
+        selectedClientId = client.id || client.email;
+        renderClientDetail(client);
+        $('admin-member-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
       const draft = document.createElement('a');
       draft.textContent = 'Préparer l’invitation';
       draft.href = 'mailto:' + encodeURIComponent(client.email) +
@@ -738,9 +765,67 @@
           ',\n\nVoici le lien pour compléter votre profil et choisir votre code de démonstration :\n' +
           invitationUrl.href + '\n\nCette invitation concerne uniquement une maquette.\n');
       draft.onclick = () => notify('Un brouillon s’ouvre : envoyez-le depuis votre messagerie.');
-      row.append(detail, draft);
+      actions.append(open, draft);
+      if (state !== 'approved') {
+        const approve = calendarElement('button', 'client-approve',
+          state === 'revoked' ? 'Réactiver' : 'Valider l’inscription');
+        approve.type = 'button';
+        approve.onclick = () => {
+          client.status = 'approved';
+          saveClients();
+          renderClients();
+          notify('Inscription validée dans cette maquette.');
+        };
+        actions.append(approve);
+      }
+      if (state !== 'revoked') {
+        const revoke = calendarElement('button', 'client-revoke', 'Révoquer');
+        revoke.type = 'button';
+        revoke.onclick = async () => {
+          const name = [client.firstname, client.name].filter(Boolean).join(' ');
+          if (!await askUser('Révoquer ' + name + ' ?', { confirmOnly: true })) return;
+          client.status = 'revoked';
+          saveClients();
+          renderClients();
+          notify('Adhérent marqué comme révoqué dans cette maquette.');
+        };
+        actions.append(revoke);
+      }
+      row.append(detail, actions);
       list.append(row);
     });
+    const selected = clients.find(client => (client.id || client.email) === selectedClientId);
+    if (selected) renderClientDetail(selected);
+    else $('admin-member-panel').hidden = true;
+  }
+
+  function renderClientDetail(client) {
+    const panel = $('admin-member-panel');
+    const detail = $('admin-member-detail');
+    detail.replaceChildren();
+    const profile = savedProfileForClient(client);
+    const fields = document.createElement('dl');
+    const addField = (label, value) => {
+      fields.append(calendarElement('dt', '', label), calendarElement('dd', '', value || 'Non renseigné'));
+    };
+    addField('Nom', [client.firstname, client.name].filter(Boolean).join(' '));
+    addField('Société', profile?.company || client.company);
+    addField('Numéro de téléphone', profile?.phone || client.phone);
+    addField('Adresse e-mail', client.email);
+    addField('Statut', client.status === 'approved' ? 'Inscription validée' :
+      client.status === 'revoked' ? 'Révoqué' : 'À valider');
+    addField('Rôle', profile?.role);
+    addField('Brevet drone', Array.isArray(profile?.licences) ? profile.licences.join(', ') : '');
+    detail.append(fields, calendarElement('h3', '', 'Drones'));
+    if (Array.isArray(profile?.drones) && profile.drones.length) {
+      profile.drones.forEach(drone => detail.append(calendarElement('div', 'member-drone',
+        [drone.brand, drone.model, drone.droneClass && 'Classe ' + drone.droneClass,
+          drone.weightGrams && drone.weightGrams + ' g', drone.serialNumber && 'N° de série : ' + drone.serialNumber,
+          drone.uasNumber && 'N° UAS : ' + drone.uasNumber].filter(Boolean).join(' · '))));
+    } else detail.append(calendarElement('p', 'small', 'Aucun drone visible dans ce navigateur.'));
+    detail.append(calendarElement('p', 'small',
+      'Maquette : une fiche complétée sur un autre navigateur ou appareil ne se synchronise pas ici.'));
+    panel.hidden = false;
   }
 
   function renderAdminInfos() {
@@ -1533,13 +1618,14 @@
     card.innerHTML = `<summary class="drone-card-summary"><span><strong class="drone-card-title"></strong><span class="drone-card-description"></span></span></summary><div class="drone-card-fields">
       <div class="two"><label>Type de machine<select data-drone-field="machineKind"><option>Drone</option><option>Aéronef télépiloté</option><option>Autre</option></select></label><label>Marque<input data-drone-field="brand" placeholder="Ex. DJI"></label></div>
       <div class="two"><label>Type ou modèle de drone<input data-drone-field="model" placeholder="Ex. Mavic 3 Enterprise"></label><label>Classe du drone<select data-drone-field="droneClass"><option value="">Non renseignée</option><option>C0</option><option>C1</option><option>C2</option><option>C3</option><option>C4</option><option>C5</option><option>C6</option><option>Sans classe</option></select></label></div>
-      <label>Poids (g)<input data-drone-field="weightGrams" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 900"></label>
+      <div class="two"><label>Poids (g)<input data-drone-field="weightGrams" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 900"></label><label>N° de série<input data-drone-field="serialNumber" autocomplete="off" placeholder="Numéro de série"></label></div>
+      <label>N° UAS<input data-drone-field="uasNumber" autocomplete="off" placeholder="Numéro UAS"></label>
       <button class="approve drone-remove" type="button">Retirer ce drone</button></div>`;
-    for (const field of ['machineKind', 'brand', 'model', 'droneClass', 'weightGrams']) {
+    for (const field of ['machineKind', 'brand', 'model', 'droneClass', 'weightGrams', 'serialNumber', 'uasNumber']) {
       const input = card.querySelector(`[data-drone-field="${field}"]`);
       if (drone[field] !== undefined && drone[field] !== null) input.value = String(drone[field]);
     }
-    for (const field of ['machineKind', 'brand', 'model', 'droneClass', 'weightGrams'])
+    for (const field of ['machineKind', 'brand', 'model', 'droneClass', 'weightGrams', 'serialNumber', 'uasNumber'])
       card.querySelector(`[data-drone-field="${field}"]`).addEventListener('input', () => updateDroneSummary(card));
     updateDroneSummary(card);
     card.querySelector('.drone-remove').onclick = () => {
@@ -1564,13 +1650,15 @@
       brand: $('new-drone-brand').value.trim(),
       model: $('new-drone-model').value.trim(),
       droneClass: $('new-drone-class').value,
-      weightGrams: $('new-drone-weight').value.trim()
+      weightGrams: $('new-drone-weight').value.trim(),
+      serialNumber: $('new-drone-serial').value.trim(),
+      uasNumber: $('new-drone-uas').value.trim()
     };
   }
 
   function hasNewDroneDraft(drone) {
     return drone.machineKind !== 'Drone' || Boolean(drone.brand || drone.model ||
-      drone.droneClass || drone.weightGrams);
+      drone.droneClass || drone.weightGrams || drone.serialNumber || drone.uasNumber);
   }
 
   function addNewDroneDraft() {
@@ -1581,7 +1669,7 @@
       return false;
     }
     addDroneCard(draft);
-    for (const id of ['new-drone-brand', 'new-drone-model', 'new-drone-weight']) $(id).value = '';
+    for (const id of ['new-drone-brand', 'new-drone-model', 'new-drone-weight', 'new-drone-serial', 'new-drone-uas']) $(id).value = '';
     $('new-drone-kind').value = 'Drone';
     $('new-drone-class').value = '';
     notify('Drone ajouté à la liste. Enregistrez le profil pour conserver la modification.');
@@ -1691,6 +1779,11 @@
     } else if (event.key === informationKey) {
       adminInfos.splice(0, adminInfos.length, ...readAdminInfos());
       renderAdminInfos();
+    } else if (event.key === clientKey) {
+      clients.splice(0, clients.length, ...readClients());
+      renderClients();
+    } else if (event.key === 'aerozone-profile' || event.key === 'aerozone-demo-invite-profile') {
+      if (adminAuthenticated) renderClients();
     } else if (event.key === blockedDatesKey) {
       blockedPeriods.splice(0, blockedPeriods.length, ...readBlockedPeriods());
       rebuildBlockedDates();
@@ -1802,12 +1895,17 @@
       id: 'client-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
       name: $('client-name').value.trim(),
       firstname: $('client-firstname').value.trim(),
-      company: $('client-company').value.trim(), email
+      company: $('client-company').value.trim(), phone: $('client-phone').value.trim(),
+      email, status: 'pending'
     });
     saveClients();
     renderClients();
     $('client-form').reset();
-    notify('Client ajouté. Préparez puis envoyez son invitation par e-mail.');
+    notify('Adhérent ajouté. Préparez puis envoyez son invitation par e-mail.');
+  };
+  $('admin-member-close').onclick = () => {
+    selectedClientId = null;
+    $('admin-member-panel').hidden = true;
   };
   $('add-profile-drone').onclick = addNewDroneDraft;
   $('edit-main-zone').onclick = enterMainEdit;
@@ -1999,7 +2097,8 @@
       return {
         id: card.dataset.droneId, machineKind: value('machineKind'),
         brand: value('brand'), model: value('model'),
-        droneClass: value('droneClass'), weightGrams: value('weightGrams')
+        droneClass: value('droneClass'), weightGrams: value('weightGrams'),
+        serialNumber: value('serialNumber'), uasNumber: value('uasNumber')
       };
     });
     if (drones.some(drone => !drone.model)) {
