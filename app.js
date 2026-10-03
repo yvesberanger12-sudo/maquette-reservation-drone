@@ -181,6 +181,7 @@
   function saveReservations() {
     try { localStorage.setItem(reservationKey, JSON.stringify(reservations)); }
     catch { notify('Impossible d’enregistrer la réservation dans ce navigateur'); }
+    if (!$('admin-statistics').hidden) renderAdminStatistics();
   }
 
   function readClients() {
@@ -581,7 +582,8 @@
       item.creatorEmail
         ? client.email.toLowerCase() === item.creatorEmail.toLowerCase()
         : [client.firstname, client.name].filter(Boolean).join(' ').toLocaleLowerCase('fr-FR') === name.toLocaleLowerCase('fr-FR'));
-    return profileCompany || (matchingClients.length === 1 && matchingClients[0].company) ||
+    return profileCompany || (matchingClients.length === 1 &&
+      (savedProfileForClient(matchingClients[0])?.company || matchingClients[0].company)) ||
       item.company || 'Société non renseignée';
   }
 
@@ -722,7 +724,20 @@
         if (candidate?.email?.trim().toLowerCase() === client.email.toLowerCase()) return candidate;
       } catch {}
     }
-    return null;
+    return client.profileSnapshot || null;
+  }
+
+  function syncClientProfile(profile) {
+    const email = String(profile.email || '').trim().toLowerCase();
+    const client = clients.find(item => item.email.toLowerCase() === email);
+    if (!client) return;
+    client.profileSnapshot = {
+      name: profile.name, firstname: profile.firstname, company: profile.company,
+      email: profile.email, phone: profile.phone, role: profile.role,
+      licences: profile.licences, drones: profile.drones
+    };
+    saveClients();
+    renderClients();
   }
 
   function renderClients() {
@@ -742,7 +757,7 @@
       const row = calendarElement('div', 'admin-client-row');
       const detail = document.createElement('div');
       detail.append(calendarElement('strong', '',
-        [client.firstname, client.name].filter(Boolean).join(' ') +
+        [profile?.firstname || client.firstname, profile?.name || client.name].filter(Boolean).join(' ') +
         ((profile?.company || client.company) ? ' - ' + (profile?.company || client.company) : '')),
         calendarElement('span', 'small', [profile?.phone || client.phone || 'Téléphone non renseigné',
           client.email].join(' · ')));
@@ -808,14 +823,15 @@
     const addField = (label, value) => {
       fields.append(calendarElement('dt', '', label), calendarElement('dd', '', value || 'Non renseigné'));
     };
-    addField('Nom', [client.firstname, client.name].filter(Boolean).join(' '));
+    addField('Nom', [profile?.firstname || client.firstname, profile?.name || client.name].filter(Boolean).join(' '));
     addField('Société', profile?.company || client.company);
     addField('Numéro de téléphone', profile?.phone || client.phone);
     addField('Adresse e-mail', client.email);
     addField('Statut', client.status === 'approved' ? 'Inscription validée' :
       client.status === 'revoked' ? 'Révoqué' : 'À valider');
     addField('Rôle', profile?.role);
-    addField('Brevet drone', Array.isArray(profile?.licences) ? profile.licences.join(', ') : '');
+    addField('Brevet drone', Array.isArray(profile?.licences) ?
+      profile.licences.filter(value => ['CATS', 'STS-01', 'STS-02'].includes(value)).join(', ') : '');
     detail.append(fields, calendarElement('h3', '', 'Drones'));
     if (Array.isArray(profile?.drones) && profile.drones.length) {
       profile.drones.forEach(drone => detail.append(calendarElement('div', 'member-drone',
@@ -826,6 +842,61 @@
     detail.append(calendarElement('p', 'small',
       'Maquette : une fiche complétée sur un autre navigateur ou appareil ne se synchronise pas ici.'));
     panel.hidden = false;
+  }
+
+  function renderAdminStatistics() {
+    const metrics = $('statistics-metrics');
+    metrics.replaceChildren();
+    const cancelled = item => ['cancelled', 'canceled'].includes(item.status);
+    const values = [
+      ['Réservations enregistrées', reservations.length],
+      ['Confirmées', reservations.filter(item => item.status === 'confirmed').length],
+      ['En attente', reservations.filter(item => item.status === 'pending').length],
+      ['Annulations', reservations.filter(cancelled).length],
+      ['Demandes refusées', reservations.filter(item => item.status === 'rejected').length],
+      ['Vols terminés', reservations.filter(item => Boolean(item.flightEndedAt)).length]
+    ];
+    values.forEach(([label, count]) => {
+      const card = calendarElement('div', 'statistics-metric');
+      card.append(calendarElement('strong', '', String(count)), calendarElement('span', '', label));
+      metrics.append(card);
+    });
+    const renderTable = (targetId, firstLabel, groups) => {
+      const target = $(targetId);
+      target.replaceChildren();
+      if (!groups.size) {
+        target.append(calendarElement('p', 'empty', 'Aucune réservation enregistrée dans ce navigateur.'));
+        return;
+      }
+      const table = calendarElement('table', 'statistics-table');
+      const header = document.createElement('tr');
+      [firstLabel, 'Réservations', 'Confirmées', 'En attente', 'Annulations', 'Refusées'].forEach(label =>
+        header.append(calendarElement('th', '', label)));
+      table.append(header);
+      [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'fr'))
+        .forEach(([name, items]) => {
+          const row = document.createElement('tr');
+          [name, items.length, items.filter(item => item.status === 'confirmed').length,
+            items.filter(item => item.status === 'pending').length,
+            items.filter(cancelled).length,
+            items.filter(item => item.status === 'rejected').length].forEach(value =>
+              row.append(calendarElement('td', '', String(value))));
+          table.append(row);
+        });
+      target.append(table);
+    };
+    const byCompany = new Map();
+    const byZone = new Map();
+    reservations.forEach(item => {
+      const company = reservationCompany(item);
+      const zone = item.zone || 'Zone non renseignée';
+      if (!byCompany.has(company)) byCompany.set(company, []);
+      if (!byZone.has(zone)) byZone.set(zone, []);
+      byCompany.get(company).push(item);
+      byZone.get(zone).push(item);
+    });
+    renderTable('statistics-companies', 'Entreprise', byCompany);
+    renderTable('statistics-zones', 'Zone de vol', byZone);
   }
 
   function renderAdminInfos() {
@@ -1261,23 +1332,27 @@
   function setAdminSection(section) {
     const validation = section === 'validation';
     const clientSection = section === 'clients';
+    const statisticsSection = section === 'statistics';
     const informationSection = section === 'information';
     const calendarSection = section === 'calendar';
-    $('admin-map-panel').hidden = validation || clientSection || informationSection || calendarSection;
+    $('admin-map-panel').hidden = validation || clientSection || informationSection || calendarSection || statisticsSection;
     $('admin-validation').hidden = !validation;
     $('admin-active-flights').hidden = !validation;
     $('admin-clients').hidden = !clientSection;
+    $('admin-statistics').hidden = !statisticsSection;
     $('admin-information').hidden = !informationSection;
     $('admin-calendar').hidden = !calendarSection;
-    $('admin-map-open').classList.toggle('active', !validation && !clientSection && !informationSection && !calendarSection);
+    $('admin-map-open').classList.toggle('active', !validation && !clientSection && !informationSection && !calendarSection && !statisticsSection);
     $('admin-validation-open').classList.toggle('active', validation);
     $('admin-information-open').classList.toggle('active', informationSection);
     $('admin-calendar-open').classList.toggle('active', calendarSection);
     $('admin-clients-open').classList.toggle('active', clientSection);
+    $('admin-statistics-open').classList.toggle('active', statisticsSection);
     if (validation) renderAdminRequests();
     else if (informationSection) renderAdminInfos();
     else if (calendarSection) renderAdminCalendar();
     else if (clientSection) renderClients();
+    else if (statisticsSection) renderAdminStatistics();
     else requestAnimationFrame(() => map.invalidateSize());
   }
 
@@ -1773,6 +1848,7 @@
       renderSavedRequests();
       renderAdminRequests();
       renderFlightStartValidation();
+      if (!$('admin-statistics').hidden) renderAdminStatistics();
     } else if (event.key === flightStartStorageKey()) {
       renderAdminActiveFlights();
       renderFlightStartValidation();
@@ -1782,8 +1858,10 @@
     } else if (event.key === clientKey) {
       clients.splice(0, clients.length, ...readClients());
       renderClients();
+      if (!$('admin-statistics').hidden) renderAdminStatistics();
     } else if (event.key === 'aerozone-profile' || event.key === 'aerozone-demo-invite-profile') {
       if (adminAuthenticated) renderClients();
+      if (!$('admin-statistics').hidden) renderAdminStatistics();
     } else if (event.key === blockedDatesKey) {
       blockedPeriods.splice(0, blockedPeriods.length, ...readBlockedPeriods());
       rebuildBlockedDates();
@@ -1796,6 +1874,7 @@
   $('admin-information-open').onclick = () => openAdmin('information');
   $('admin-calendar-open').onclick = () => openAdmin('calendar');
   $('admin-clients-open').onclick = () => openAdmin('clients');
+  $('admin-statistics-open').onclick = () => openAdmin('statistics');
   $('exit-admin').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
   $('profile-nav').onclick = () => setView('profile');
@@ -2129,6 +2208,7 @@
       }
       $('invite-code').value = '';
       $('invite-code-confirm').value = '';
+      syncClientProfile(profile);
       $('invite-code-fields').hidden = true;
       $('invite-intro').textContent = 'Profil de démonstration enregistré dans ce navigateur. Le code n’est pas conservé et ne permet pas de se connecter.';
       const saveButton = $('profile-form').querySelector('button[type="submit"]');
@@ -2155,6 +2235,7 @@
     $('pilot-role').textContent = profile.role;
     profileDrones = drones;
     syncBookingDrones(profileDrones);
+    syncClientProfile(profile);
     notify('Profil enregistré');
   };
 
