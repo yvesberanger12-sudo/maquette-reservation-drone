@@ -1135,11 +1135,8 @@
       select.style.removeProperty('--selected-zone-text');
       return;
     }
-    const channels = color.match(/[\da-f]{2}/gi).map(value => parseInt(value, 16) / 255);
-    const linear = channels.map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
-    const luminance = linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
     select.style.setProperty('--selected-zone-color', color);
-    select.style.setProperty('--selected-zone-text', 1.05 / (luminance + .05) >= 4.5 ? '#fff' : '#10212d');
+    select.style.setProperty('--selected-zone-text', '#fff');
   }
 
   function renderBookingZoneList() {
