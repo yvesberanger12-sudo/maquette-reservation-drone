@@ -40,7 +40,7 @@
   const center = [48.5951055, 2.3212347];
   // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
   const siteViewZoom = 12.7;
-  const bookingViewZoom = 13.4;
+  const bookingViewZoom = 12.7;
   const palette = ['#166c8b', '#c06c84', '#bc7c18', '#39855b', '#6b5cc7', '#b2519b'];
   const zones = L.featureGroup();
   const map = L.map('site-map', { zoomSnap: 0.1 }).setView(center, bookingViewZoom);
@@ -1128,18 +1128,18 @@
   }
 
   function updateBookingBannerColor(name) {
-    const heading = $('booking-request-heading');
+    const select = $('zone-select');
     const color = zoneColor(name);
     if (!color) {
-      heading.style.removeProperty('--selected-zone-color');
-      heading.style.removeProperty('--selected-zone-text');
+      select.style.removeProperty('--selected-zone-color');
+      select.style.removeProperty('--selected-zone-text');
       return;
     }
     const channels = color.match(/[\da-f]{2}/gi).map(value => parseInt(value, 16) / 255);
     const linear = channels.map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
     const luminance = linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
-    heading.style.setProperty('--selected-zone-color', color);
-    heading.style.setProperty('--selected-zone-text', 1.05 / (luminance + .05) >= 4.5 ? '#fff' : '#10212d');
+    select.style.setProperty('--selected-zone-color', color);
+    select.style.setProperty('--selected-zone-text', 1.05 / (luminance + .05) >= 4.5 ? '#fff' : '#10212d');
   }
 
   function renderBookingZoneList() {
@@ -1310,6 +1310,19 @@
 
   function siteViewCenter() {
     return mainLayer()?.getBounds().getCenter() || L.latLng(center);
+  }
+
+  function frameBookingMap() {
+    const bounds = mainLayer()?.getBounds();
+    if (!bounds?.isValid()) {
+      map.setView(siteViewCenter(), bookingViewZoom, { animate: false });
+      return;
+    }
+    const size = map.getSize();
+    map.fitBounds(bounds, {
+      padding: [Math.round(size.x * .05), Math.round(size.y * .05)],
+      animate: false
+    });
   }
 
   function refreshMirrorMap(target) {
@@ -1558,7 +1571,7 @@
     }
     requestAnimationFrame(() => {
       map.invalidateSize();
-      if (booking) map.setView(siteViewCenter(), bookingViewZoom, { animate: false });
+      if (booking) frameBookingMap();
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -2315,5 +2328,6 @@
   displayedFeatures.forEach(addFeature);
   refreshAll();
   refreshBlockedDates();
-  map.setView(siteViewCenter(), bookingViewZoom);
+  map.invalidateSize();
+  frameBookingMap();
 })();
