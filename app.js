@@ -40,9 +40,10 @@
   const center = [48.5951055, 2.3212347];
   // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
   const siteViewZoom = 12.7;
+  const bookingViewZoom = 13.4;
   const palette = ['#166c8b', '#c06c84', '#bc7c18', '#39855b', '#6b5cc7', '#b2519b'];
   const zones = L.featureGroup();
-  const map = L.map('site-map', { zoomSnap: 0.1 }).setView(center, siteViewZoom);
+  const map = L.map('site-map', { zoomSnap: 0.1 }).setView(center, bookingViewZoom);
   map.attributionControl.setPrefix(false);
   zones.addTo(map);
   const editingPoints = L.featureGroup().addTo(map);
@@ -341,6 +342,7 @@
     selectedZone = zone;
     calendarDate = parseDate(date);
     refreshMainMap();
+    renderBookingZoneList();
     focusBookingZone(zone);
     renderCalendar();
     notify(zone + ' · ' + shortDate(calendarDate) + ' · ' + hourText(hour) + ' à ' + hourText(hour + 1));
@@ -1031,6 +1033,11 @@
     return zones.getLayers().find(layer => layer.feature?.properties?.type === 'main');
   }
 
+  function zoneColor(name) {
+    const index = flightLayers().findIndex(layer => layer.feature.properties.name === name);
+    return index < 0 ? null : palette[index % palette.length];
+  }
+
   function styleFor(type, index = 0) {
     if (type === 'main') {
       return { color: '#d43d3d', weight: 5, opacity: 1, fillColor: '#ef6262', fillOpacity: .28 };
@@ -1084,15 +1091,16 @@
       const hidden = hideSubzones;
       const highlighted = activeView === 'booking' && layer.feature.properties.name === selectedZone;
       if (highlighted) selectedLayer = layer;
+      const color = palette[index % palette.length];
       layer.setStyle(hidden
         ? { ...styleFor('sub', index), opacity: 0, fillOpacity: 0 }
         : highlighted
-          ? { color: '#ffbd3a', weight: 5, opacity: 1, fillColor: '#ffbd3a', fillOpacity: .42 }
+          ? { color, weight: 5, opacity: 1, fillColor: color, fillOpacity: .45 }
           : activeView === 'booking' && selectedZone
             ? { ...styleFor('sub', index), opacity: .5, fillOpacity: .1 }
             : styleFor('sub', index));
       if (layer.getElement()) layer.getElement().style.pointerEvents = hidden ? 'none' : '';
-      if (!hidden) layer.bindTooltip('SZ : ' + (layer.feature.properties.name || 'Sans nom'), {
+      if (!hidden && activeView !== 'booking') layer.bindTooltip('SZ : ' + (layer.feature.properties.name || 'Sans nom'), {
         permanent: true, direction: 'center',
         className: 'aerozone-zone-label zone-label-' + (index % palette.length) +
           (highlighted ? ' zone-label-selected' : '')
@@ -1121,18 +1129,42 @@
 
   function updateBookingBannerColor(name) {
     const heading = $('booking-request-heading');
-    const index = flightLayers().findIndex(layer => layer.feature.properties.name === name);
-    if (index < 0) {
+    const color = zoneColor(name);
+    if (!color) {
       heading.style.removeProperty('--selected-zone-color');
       heading.style.removeProperty('--selected-zone-text');
       return;
     }
-    const color = palette[index % palette.length];
     const channels = color.match(/[\da-f]{2}/gi).map(value => parseInt(value, 16) / 255);
     const linear = channels.map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
     const luminance = linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
     heading.style.setProperty('--selected-zone-color', color);
     heading.style.setProperty('--selected-zone-text', 1.05 / (luminance + .05) >= 4.5 ? '#fff' : '#10212d');
+  }
+
+  function renderBookingZoneList() {
+    const list = $('booking-zone-list');
+    list.replaceChildren();
+    const flights = flightLayers();
+    if (!flights.length) {
+      list.append(calendarElement('p', 'empty', 'Aucune zone de vol.'));
+      return;
+    }
+    flights.forEach(layer => {
+      const name = layer.feature.properties.name || 'Zone sans nom';
+      const button = calendarElement('button', '', name);
+      const color = zoneColor(name);
+      button.type = 'button';
+      button.style.setProperty('--zone-color', color);
+      button.prepend(calendarElement('span', 'booking-zone-swatch'));
+      button.classList.toggle('active', name === $('zone-select').value);
+      button.setAttribute('aria-pressed', String(name === $('zone-select').value));
+      button.onclick = () => {
+        $('zone-select').value = name;
+        $('zone-select').dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      list.append(button);
+    });
   }
 
   function refreshZoneSelect() {
@@ -1149,6 +1181,7 @@
       $('zone-label').textContent = 'Aucune zone';
       selectedZone = '';
       updateBookingBannerColor('');
+      renderBookingZoneList();
       return;
     }
     select.disabled = false;
@@ -1160,7 +1193,8 @@
     select.value = [...select.options].some(option => option.value === previous) ? previous : select.options[0].value;
     $('zone-label').textContent = select.value;
     updateBookingBannerColor(select.value);
-    if (selectedZone && !flights.some(layer => layer.feature.properties.name === selectedZone)) selectedZone = '';
+    selectedZone = select.value;
+    renderBookingZoneList();
   }
 
   function renderZoneList() {
@@ -1481,6 +1515,7 @@
     clearEditing();
     showSubzones(true);
     activeView = view;
+    refreshMainMap();
     const booking = view === 'booking';
     if (booking || view === 'reservations' || view === 'dashboard') renderSavedRequests();
     $('booking-top').hidden = !booking;
@@ -1521,7 +1556,10 @@
       renderDashboardAdminAlerts();
       loadDashboardWeather();
     }
-    requestAnimationFrame(() => map.invalidateSize());
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+      if (booking) map.setView(siteViewCenter(), bookingViewZoom, { animate: false });
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -2116,6 +2154,7 @@
     $('zone-label').textContent = selectedZone;
     updateBookingBannerColor(selectedZone);
     refreshMainMap();
+    renderBookingZoneList();
     renderCalendar();
     focusBookingZone(selectedZone);
   };
@@ -2276,5 +2315,5 @@
   displayedFeatures.forEach(addFeature);
   refreshAll();
   refreshBlockedDates();
-  map.setView(siteViewCenter(), siteViewZoom);
+  map.setView(siteViewCenter(), bookingViewZoom);
 })();
