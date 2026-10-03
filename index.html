@@ -136,8 +136,10 @@
     #drone-booking-mock .admin-blocked-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}
     #drone-booking-mock .admin-blocked-row:first-child{border-top:0}
     #drone-booking-mock .admin-blocked-row .small{display:block;margin-top:4px}
-    #drone-booking-mock #booking-request-heading{background:var(--selected-zone-color,#286178);color:var(--selected-zone-text,#fff)}
-    #drone-booking-mock #booking-request-heading h2,#drone-booking-mock #booking-request-heading .small{color:var(--selected-zone-text,#fff)}
+    #drone-booking-mock #booking-request-heading{background:#286178;color:#fff}
+    #drone-booking-mock #booking-request-heading h2,#drone-booking-mock #booking-request-heading .small{color:#fff}
+    #drone-booking-mock #zone-select{background-color:var(--selected-zone-color,var(--surface));border-color:var(--selected-zone-color,var(--line));color:var(--selected-zone-text,var(--ink));font-weight:700}
+    #drone-booking-mock #zone-select option{background:var(--surface);color:var(--ink)}
     #drone-booking-mock .admin-blocked-row button{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:12px}
     #drone-booking-mock .calendar-slot.blocked{background:light-dark(#f4dce0,#51292e);color:light-dark(#973746,#f0abb5)}
     #drone-booking-mock .calendar-slot.has-company{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:48px;padding:4px 3px;line-height:1.15;white-space:normal}
@@ -391,7 +393,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=carte-zones-reservation-20261003-1"></script>
+  <script src="app.js?v=cadrage-carte-et-couleur-zone-20261003-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
