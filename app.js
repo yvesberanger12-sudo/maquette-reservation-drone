@@ -1867,6 +1867,7 @@
   }
 
   $('booking-open').onclick = () => setView('booking');
+  $('brand-home').onclick = () => setView('booking');
   $('reservations-open').onclick = () => setView('reservations');
   $('flight-dashboard-open').onclick = () => setView('dashboard');
   $('rules-open').onclick = () => setView('rules');
