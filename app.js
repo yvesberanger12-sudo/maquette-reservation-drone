@@ -321,7 +321,7 @@
     if (blockedDates.has(date)) return 'blocked';
     const start = hourText(hour);
     const end = hourText(hour + 1);
-    const matches = reservations.filter(item => item.status !== 'rejected' && item.zone === zone && item.date === date &&
+    const matches = reservations.filter(item => activeReservation(item) && item.zone === zone && item.date === date &&
       item.start < end && item.end > start);
     if (matches.some(item => item.status === 'confirmed')) return 'confirmed';
     return matches.length ? 'pending' : 'free';
@@ -423,7 +423,7 @@
       for (let offset = 0; offset < days; offset++) {
         const date = dateAfter(firstMonday, offset);
         const key = isoDate(date);
-        const count = reservations.filter(item => item.status !== 'rejected' && item.date === key && names.includes(item.zone)).length;
+        const count = reservations.filter(item => activeReservation(item) && item.date === key && names.includes(item.zone)).length;
         const button = calendarElement('button', 'month-day' +
           (date.getMonth() !== first.getMonth() ? ' outside' : '') +
           (key === isoDate(new Date()) ? ' today' : '') +
@@ -2396,7 +2396,7 @@
       notify('Date indisponible : ' + blockedTitles.get(date) + '. Choisissez un autre jour.');
       return;
     }
-    if (reservations.some(item => item.status !== 'rejected' && item.zone === zone && item.date === date && item.start < end && item.end > start)) {
+    if (reservations.some(item => activeReservation(item) && item.zone === zone && item.date === date && item.start < end && item.end > start)) {
       notify('Ce créneau est déjà demandé pour cette zone');
       return;
     }
