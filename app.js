@@ -369,7 +369,7 @@
       ' · ' + (status === 'blocked' ? 'Bloqué : ' + blockedTitles.get(date) : label) +
       (company ? ' · Société : ' + company : '');
     button.setAttribute('aria-label', button.title);
-    button.disabled = status !== 'free';
+    button.disabled = status !== 'free' || activeView === 'admin';
     if (zone === $('zone-select').value && date === $('booking-date').value && hourText(hour) === $('start').value)
       button.classList.add('selected');
     button.onclick = () => selectCalendarSlot(zone, date, hour);
@@ -393,7 +393,8 @@
       'Choisissez un jour pour afficher les créneaux de 08:00 à 19:00.' :
       calendarView === 'day' && blockedDates.has(isoDate(calendarDate)) ?
         'Indisponible — ' + blockedTitles.get(isoDate(calendarDate)) + '. Aucune demande ne peut être faite.' :
-        'Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.';
+        activeView === 'admin' ? 'Créneaux de 08:00 à 19:00. Consultation du planning des zones de vol.' :
+          'Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.';
     if (calendarView === 'day') title.textContent = 'Disponibilités du ' + shortDate(calendarDate);
     if (calendarView === 'week') {
       const monday = mondayOf(calendarDate);
@@ -987,7 +988,8 @@
       if (next) $('booking-date').value = isoDate(next);
     }
     lastBookableDate = $('booking-date').value;
-    if (blockedDates.has(isoDate(calendarDate))) calendarDate = nextOpenDate(calendarDate) || calendarDate;
+    if (activeView !== 'admin' && blockedDates.has(isoDate(calendarDate)))
+      calendarDate = nextOpenDate(calendarDate) || calendarDate;
     renderAdminCalendar();
     renderCalendar();
   }
@@ -1379,6 +1381,8 @@
     const statisticsSection = section === 'statistics';
     const informationSection = section === 'information';
     const calendarSection = section === 'calendar';
+    (calendarSection ? $('admin-calendar-host') : $('booking-main-card'))
+      .append($('shared-calendar-section'));
     $('admin-map-panel').hidden = validation || clientSection || informationSection || calendarSection || statisticsSection;
     $('admin-validation').hidden = !validation;
     $('admin-active-flights').hidden = !validation;
@@ -1394,7 +1398,10 @@
     $('admin-statistics-open').classList.toggle('active', statisticsSection);
     if (validation) renderAdminRequests();
     else if (informationSection) renderAdminInfos();
-    else if (calendarSection) renderAdminCalendar();
+    else if (calendarSection) {
+      renderAdminCalendar();
+      renderCalendar();
+    }
     else if (clientSection) renderClients();
     else if (statisticsSection) renderAdminStatistics();
     else requestAnimationFrame(() => map.invalidateSize());
@@ -1525,9 +1532,11 @@
     clearEditing();
     showSubzones(true);
     activeView = view;
+    if (view !== 'admin') $('booking-main-card').append($('shared-calendar-section'));
     refreshMainMap();
     const booking = view === 'booking';
     if (booking || view === 'reservations' || view === 'dashboard') renderSavedRequests();
+    if (booking) renderCalendar();
     $('booking-top').hidden = !booking;
     root.querySelector('.layout').hidden = !booking;
     $('reservations-view').hidden = view !== 'reservations';
@@ -2114,20 +2123,24 @@
     const previous = calendarView === 'month'
       ? new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1)
       : dateAfter(calendarDate, calendarView === 'week' ? -7 : -1);
-    calendarDate = calendarView === 'day' ? nextOpenDate(previous, -1) || calendarDate : previous;
+    calendarDate = calendarView === 'day' && activeView !== 'admin' ?
+      nextOpenDate(previous, -1) || calendarDate : previous;
     renderCalendar();
   };
   $('calendar-next').onclick = () => {
     const next = calendarView === 'month'
       ? new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1)
       : dateAfter(calendarDate, calendarView === 'week' ? 7 : 1);
-    calendarDate = calendarView === 'day' ? nextOpenDate(next) || calendarDate : next;
+    calendarDate = calendarView === 'day' && activeView !== 'admin' ?
+      nextOpenDate(next) || calendarDate : next;
     renderCalendar();
   };
   $('calendar-today').onclick = () => {
-    calendarDate = nextOpenDate(new Date()) || new Date();
-    $('booking-date').value = isoDate(calendarDate);
-    lastBookableDate = $('booking-date').value;
+    calendarDate = activeView === 'admin' ? new Date() : nextOpenDate(new Date()) || new Date();
+    if (activeView !== 'admin') {
+      $('booking-date').value = isoDate(calendarDate);
+      lastBookableDate = $('booking-date').value;
+    }
     renderCalendar();
   };
   $('calendar-date').onchange = () => {
