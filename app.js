@@ -181,8 +181,12 @@
 
   function saveReservations() {
     try { localStorage.setItem(reservationKey, JSON.stringify(reservations)); }
-    catch { notify('Impossible d’enregistrer la réservation dans ce navigateur'); }
+    catch {
+      notify('Impossible d’enregistrer la réservation dans ce navigateur');
+      return false;
+    }
     if (!$('admin-statistics').hidden) renderAdminStatistics();
+    return true;
   }
 
   function readClients() {
@@ -369,10 +373,11 @@
       ' · ' + (status === 'blocked' ? 'Bloqué : ' + blockedTitles.get(date) : label) +
       (company ? ' · Société : ' + company : '');
     button.setAttribute('aria-label', button.title);
-    button.disabled = status !== 'free' || activeView === 'admin';
+    button.disabled = activeView === 'admin' ? status === 'blocked' : status !== 'free';
     if (zone === $('zone-select').value && date === $('booking-date').value && hourText(hour) === $('start').value)
       button.classList.add('selected');
-    button.onclick = () => selectCalendarSlot(zone, date, hour);
+    button.onclick = () => activeView === 'admin' ? selectAdminCalendarSlot(zone, date, hour, status) :
+      selectCalendarSlot(zone, date, hour);
     return button;
   }
 
@@ -393,7 +398,7 @@
       'Choisissez un jour pour afficher les créneaux de 08:00 à 19:00.' :
       calendarView === 'day' && blockedDates.has(isoDate(calendarDate)) ?
         'Indisponible — ' + blockedTitles.get(isoDate(calendarDate)) + '. Aucune demande ne peut être faite.' :
-        activeView === 'admin' ? 'Créneaux de 08:00 à 19:00. Consultation du planning des zones de vol.' :
+        activeView === 'admin' ? 'Cliquez sur un créneau libre pour ajouter une réservation, ou sur un créneau occupé pour la gérer.' :
           'Créneaux de 08:00 à 19:00. Cliquez sur une heure libre pour préparer votre demande.';
     if (calendarView === 'day') title.textContent = 'Disponibilités du ' + shortDate(calendarDate);
     if (calendarView === 'week') {
@@ -981,6 +986,122 @@
     });
   }
 
+  function activeReservation(item) {
+    return !['rejected', 'cancelled', 'canceled'].includes(item.status);
+  }
+
+  function refreshAdminReservationFields() {
+    const memberSelect = $('admin-reservation-member');
+    const selectedMember = memberSelect.value;
+    memberSelect.replaceChildren(new Option('Choisir un adhérent', ''));
+    clients.filter(client => client.status !== 'revoked').forEach(client => {
+      const profile = savedProfileForClient(client);
+      const name = [profile?.firstname || client.firstname, profile?.name || client.name]
+        .filter(Boolean).join(' ') || client.email;
+      memberSelect.add(new Option(name + (client.company ? ' — ' + client.company : ''), client.email));
+    });
+    memberSelect.value = [...memberSelect.options].some(option => option.value === selectedMember) ? selectedMember : '';
+    const zoneSelect = $('admin-reservation-zone');
+    const selectedZone = zoneSelect.value;
+    zoneSelect.replaceChildren(new Option('Choisir une zone', ''));
+    flightLayers().forEach(layer => {
+      const name = layer.feature.properties.name || 'Zone sans nom';
+      zoneSelect.add(new Option(name, name));
+    });
+    zoneSelect.value = [...zoneSelect.options].some(option => option.value === selectedZone) ? selectedZone : '';
+    for (const [id, from, to] of [['admin-reservation-start', 8, 18], ['admin-reservation-end', 9, 19]]) {
+      const select = $(id);
+      if (!select.options.length) for (let hour = from; hour <= to; hour++)
+        select.add(new Option(hourText(hour), hourText(hour)));
+    }
+    if (!$('admin-reservation-date').value) $('admin-reservation-date').value = isoDate(calendarDate);
+    refreshAdminReservationDrones();
+    const canAdd = clients.some(client => client.status !== 'revoked') && flightLayers().length > 0;
+    $('admin-reservation-form').querySelector('button[type="submit"]').disabled = !canAdd;
+    $('admin-reservation-help').textContent = canAdd ?
+      'La réservation sera confirmée et apparaîtra dans le calendrier et la partie adhérent de ce navigateur.' :
+      'Créez d’abord un adhérent et une zone de vol pour pouvoir ajouter une réservation.';
+  }
+
+  function refreshAdminReservationDrones() {
+    const select = $('admin-reservation-drone');
+    const previous = select.value;
+    select.replaceChildren(new Option('Aucun drone précisé', ''));
+    const client = clients.find(item => item.email === $('admin-reservation-member').value);
+    const drones = client ? savedProfileForClient(client)?.drones : null;
+    if (Array.isArray(drones)) drones.forEach((drone, index) =>
+      select.add(new Option([drone.machineKind, drone.brand, drone.model].filter(Boolean).join(' · ') ||
+        'Drone ' + (index + 1), String(index))));
+    select.value = [...select.options].some(option => option.value === previous) ? previous : '';
+  }
+
+  function renderAdminReservationList() {
+    const list = $('admin-reservation-list');
+    list.replaceChildren();
+    const current = reservations.filter(activeReservation).sort((a, b) =>
+      (a.date + a.start).localeCompare(b.date + b.start));
+    $('admin-calendar-reservation-count').textContent = current.length + ' réservation' +
+      (current.length > 1 ? 's' : '');
+    if (!current.length) {
+      list.append(calendarElement('p', 'empty', 'Aucune réservation enregistrée.'));
+      return;
+    }
+    current.forEach(item => {
+      const row = calendarElement('div', 'admin-reservation-row');
+      row.dataset.reservationIndex = String(reservations.indexOf(item));
+      const detail = document.createElement('div');
+      detail.append(calendarElement('strong', '', (item.creator || 'Adhérent') + ' — ' + item.zone));
+      detail.append(calendarElement('span', 'small', reservationDate(parseDate(item.date)) + ' · ' +
+        item.start + ' à ' + item.end + ' · ' + (item.status === 'confirmed' ? 'Confirmée' : 'En attente')));
+      detail.append(calendarElement('span', 'small', reservationCompany(item) +
+        (item.purpose ? ' · ' + item.purpose : '') +
+        (item.machineModel ? ' · ' + [item.machineBrand, item.machineModel].filter(Boolean).join(' ') : '')));
+      const button = calendarElement('button', '', 'Supprimer');
+      button.type = 'button';
+      button.dataset.reservationIndex = row.dataset.reservationIndex;
+      button.setAttribute('aria-label', 'Supprimer la réservation de ' + (item.creator || 'cet adhérent') +
+        ' pour ' + item.zone + ' le ' + reservationDate(parseDate(item.date)));
+      row.append(detail, button);
+      list.append(row);
+    });
+  }
+
+  function renderAdminReservationTools() {
+    refreshAdminReservationFields();
+    renderAdminReservationList();
+  }
+
+  function selectAdminCalendarSlot(zone, date, hour, status) {
+    if (!adminAuthenticated) return;
+    if (status === 'free') {
+      $('admin-reservation-zone').value = zone;
+      $('admin-reservation-date').value = date;
+      $('admin-reservation-start').value = hourText(hour);
+      $('admin-reservation-end').value = hourText(hour + 1);
+      $('admin-reservation-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      notify('Créneau libre sélectionné : choisissez l’adhérent.');
+      return;
+    }
+    const item = reservationForSlot(zone, date, hour, status);
+    if (!item) return;
+    const row = [...$('admin-reservation-list').querySelectorAll('.admin-reservation-row')]
+      .find(candidate => Number(candidate.dataset.reservationIndex) === reservations.indexOf(item));
+    if (!row) return;
+    $('admin-reservation-list').querySelectorAll('.is-selected').forEach(candidate =>
+      candidate.classList.remove('is-selected'));
+    row.classList.add('is-selected');
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function refreshReservationViews() {
+    renderCalendar();
+    renderSavedRequests();
+    renderAdminRequests();
+    renderFlightStartValidation();
+    renderAdminActiveFlights();
+    renderAdminReservationTools();
+  }
+
   function refreshBlockedDates() {
     const bookingDate = $('booking-date').value;
     if (blockedDates.has(bookingDate)) {
@@ -1400,6 +1521,7 @@
     else if (informationSection) renderAdminInfos();
     else if (calendarSection) {
       renderAdminCalendar();
+      renderAdminReservationTools();
       renderCalendar();
     }
     else if (clientSection) renderClients();
@@ -1903,9 +2025,7 @@
   window.addEventListener('storage', event => {
     if (event.key === reservationKey) {
       reservations.splice(0, reservations.length, ...readReservations());
-      renderSavedRequests();
-      renderAdminRequests();
-      renderFlightStartValidation();
+      refreshReservationViews();
       if (!$('admin-statistics').hidden) renderAdminStatistics();
     } else if (event.key === flightStartStorageKey()) {
       renderAdminActiveFlights();
@@ -1916,6 +2036,7 @@
     } else if (event.key === clientKey) {
       clients.splice(0, clients.length, ...readClients());
       renderClients();
+      renderAdminReservationTools();
       if (!$('admin-statistics').hidden) renderAdminStatistics();
     } else if (event.key === 'aerozone-profile' || event.key === 'aerozone-demo-invite-profile') {
       if (adminAuthenticated) renderClients();
@@ -1933,6 +2054,75 @@
   $('admin-calendar-open').onclick = () => openAdmin('calendar');
   $('admin-clients-open').onclick = () => openAdmin('clients');
   $('admin-statistics-open').onclick = () => openAdmin('statistics');
+  $('admin-reservation-member').onchange = refreshAdminReservationDrones;
+  $('admin-reservation-form').onsubmit = event => {
+    event.preventDefault();
+    if (!adminAuthenticated) return;
+    const client = clients.find(item => item.email === $('admin-reservation-member').value &&
+      item.status !== 'revoked');
+    const zone = $('admin-reservation-zone').value;
+    const date = $('admin-reservation-date').value;
+    const start = $('admin-reservation-start').value;
+    const end = $('admin-reservation-end').value;
+    if (!client || !flightLayers().some(layer => layer.feature.properties.name === zone)) {
+      notify('Choisissez un adhérent et une zone de vol valides.');
+      return;
+    }
+    if (!parseDate(date) || start < '08:00' || end > '19:00' || start >= end) {
+      notify('Choisissez une date et un horaire entre 08:00 et 19:00.');
+      return;
+    }
+    if (blockedDates.has(date)) {
+      notify('Date indisponible : ' + blockedTitles.get(date) + '.');
+      return;
+    }
+    if (reservations.some(item => activeReservation(item) && item.zone === zone &&
+      item.date === date && item.start < end && item.end > start)) {
+      notify('Ce créneau est déjà réservé ou en attente pour cette zone.');
+      return;
+    }
+    const profile = savedProfileForClient(client);
+    const drones = Array.isArray(profile?.drones) ? profile.drones : [];
+    const droneIndex = $('admin-reservation-drone').value;
+    const drone = droneIndex === '' ? null : drones[Number(droneIndex)];
+    const item = {
+      id: 'reservation-admin-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+      zone, date, start, end, purpose: $('admin-reservation-purpose').value,
+      creator: [profile?.firstname || client.firstname, profile?.name || client.name].filter(Boolean).join(' '),
+      creatorEmail: client.email, company: profile?.company || client.company || '',
+      memberId: client.id, status: 'confirmed', source: 'admin'
+    };
+    if (drone) Object.assign(item, {
+      droneId: drone.id, machineKind: drone.machineKind, machineBrand: drone.brand,
+      machineModel: drone.model, droneClass: drone.droneClass, weightGrams: drone.weightGrams
+    });
+    reservations.push(item);
+    if (!saveReservations()) {
+      reservations.pop();
+      return;
+    }
+    calendarDate = parseDate(date);
+    refreshReservationViews();
+    notify('Réservation confirmée pour ' + item.creator + ' · ' + zone + '.');
+  };
+  $('admin-reservation-list').onclick = async event => {
+    const button = event.target.closest('button[data-reservation-index]');
+    if (!button || !adminAuthenticated) return;
+    const index = Number(button.dataset.reservationIndex);
+    const item = reservations[index];
+    if (!item || !activeReservation(item)) return;
+    const confirmed = await askUser('Supprimer la réservation de ' + (item.creator || 'cet adhérent') +
+      ' pour ' + item.zone + ' le ' + reservationDate(parseDate(item.date)) + ' ?', { confirmOnly: true });
+    if (!confirmed) return;
+    keepSnapshot('aerozone-calendar-reservations-history-v1', localStorage.getItem(reservationKey));
+    reservations.splice(index, 1);
+    if (!saveReservations()) {
+      reservations.splice(index, 0, item);
+      return;
+    }
+    refreshReservationViews();
+    notify('Réservation supprimée : le créneau est de nouveau disponible.');
+  };
   $('exit-admin').onclick = () => setView('booking');
   $('profile-open').onclick = () => setView('profile');
   $('profile-nav').onclick = () => setView('profile');
