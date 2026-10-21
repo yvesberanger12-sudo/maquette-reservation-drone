@@ -230,6 +230,12 @@
     #drone-booking-mock .demo-login-error{margin:0;color:#ffb0a8;font-size:12px;font-weight:700}
     #drone-booking-mock.admin-route .nav>button:not(#admin-nav){display:none}
     #drone-booking-mock.admin-route .pilot{display:none!important}
+    #drone-booking-mock.admin-route #admin-nav{display:none!important}
+    #drone-booking-mock.admin-route .nav .admin-subnav{display:grid;gap:5px;margin:0;padding:0;border:0}
+    #drone-booking-mock.admin-route .nav .admin-subnav button{font-size:14px;padding:11px 10px}
+    #drone-booking-mock.admin-route .nav .admin-subnav button.active{background:#22556e;color:#fff;font-weight:650;border-radius:11px;box-shadow:inset 0 0 0 1px #fff}
+    #drone-booking-mock.admin-route #admin-validation-open{display:flex;align-items:center;justify-content:space-between;gap:6px}
+    @media(max-width:640px){#drone-booking-mock.admin-route .nav .admin-subnav{display:flex;flex:1 0 100%;flex-wrap:wrap;gap:4px}#drone-booking-mock.admin-route .nav .admin-subnav button{font-size:13px;padding:9px 10px}}
     @media(max-width:640px){#drone-booking-mock .demo-login-card{padding:26px 21px}#drone-booking-mock .demo-login h1{font-size:26px}}
     /* La colonne bleue suit toute la hauteur de la page ; le profil reste à son pied. */
     @media(min-width:641px){#drone-booking-mock .side{position:relative;top:auto;height:auto;min-height:100dvh;overflow:visible}}
@@ -415,7 +421,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=connexion-admin-20261021-1"></script>
+  <script src="app.js?v=menu-admin-direct-20261021-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
