@@ -52,6 +52,11 @@
     #drone-booking-mock .profile-card .profile-add-drone{justify-self:start;border:0;border-radius:7px;background:#286178;color:#fff;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer}
     #drone-booking-mock .profile-card .profile-add-drone:hover{filter:brightness(1.1)}
     #drone-booking-mock .profile-card.drone-section{display:block;margin:0}
+    #drone-booking-mock .team-member-list{display:grid;gap:10px}
+    #drone-booking-mock .team-member-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--soft)}
+    #drone-booking-mock .team-member-row strong,#drone-booking-mock .team-member-row span{display:block}
+    #drone-booking-mock .team-member-row span{margin-top:3px;color:var(--muted);font-size:11px}
+    #drone-booking-mock .team-member-remove{flex:none;color:#a22e29}
     @media(max-width:640px){#drone-booking-mock .profile-card-body{padding:14px}#drone-booking-mock .profile-card .dashboard-heading{flex-wrap:wrap}}
     #drone-booking-mock .drone-card{border:1px solid var(--line);border-radius:9px;background:var(--soft);overflow:hidden}
     #drone-booking-mock .drone-card-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:12px 14px;color:var(--ink);font-size:13px;list-style:none}
@@ -319,6 +324,21 @@
               <div class="invite-code-fields" id="invite-code-fields" hidden><div class="two"><label>Créer un code de démonstration<input id="invite-code" type="password" autocomplete="new-password" minlength="6"></label><label>Confirmer le code<input id="invite-code-confirm" type="password" autocomplete="new-password" minlength="6"></label></div></div>
             </div>
           </section>
+          <section class="panel profile-card" aria-labelledby="team-heading">
+            <div class="dashboard-heading"><h2 id="team-heading">Membres d’équipe</h2></div>
+            <div class="profile-card-body formgrid">
+              <p class="small">Membres rattachés à la société indiquée dans ce profil. Cette liste ne crée pas de compte de connexion.</p>
+              <div id="team-member-list" class="team-member-list" aria-label="Membres de la société"></div>
+              <div class="new-drone-section" aria-labelledby="team-add-heading">
+                <h3 id="team-add-heading">Ajouter un membre</h3>
+                <div class="formgrid">
+                  <div class="two"><label>Nom<input id="team-member-name" autocomplete="off"></label><label>Prénom<input id="team-member-firstname" autocomplete="off"></label></div>
+                  <div class="two"><label>Adresse e-mail<input id="team-member-email" type="email" autocomplete="off"></label><label>Numéro de téléphone<input id="team-member-phone" type="tel" autocomplete="off"></label></div>
+                  <button class="profile-add-drone" id="add-team-member" type="button">Ajouter à l’équipe</button>
+                </div>
+              </div>
+            </div>
+          </section>
           <section class="panel profile-card drone-section" aria-labelledby="drones-heading">
             <div class="dashboard-heading"><h2 id="drones-heading">Mes drones</h2></div>
             <div class="profile-card-body formgrid">
@@ -421,7 +441,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=reservations-badge-20261021-1"></script>
+  <script src="app.js?v=team-members-20261021-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
