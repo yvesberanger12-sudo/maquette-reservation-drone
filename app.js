@@ -75,6 +75,12 @@
   const blockedDates = new Set();
   const blockedTitles = new Map();
   rebuildBlockedDates();
+  const todayParis = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+  const initialBookingDate = nextOpenDate(parseDate(todayParis)) || parseDate(todayParis);
+  $('booking-date').value = isoDate(initialBookingDate);
+  $('booking-date').min = todayParis;
   let calendarView = 'day';
   let calendarDate = parseDate($('booking-date').value) || new Date();
   let lastBookableDate = $('booking-date').value;
@@ -514,6 +520,7 @@
     const future = sorted.filter(item => item.status !== 'rejected' && stillRelevant(item));
     const current = future.filter(isCurrent);
     const upcoming = future.filter(item => !isCurrent(item));
+    const pendingCount = future.filter(item => item.status === 'pending').length;
     const weekStartDate = mondayOf(parseDate(nowParis.slice(0, 10)));
     const weekStart = isoDate(weekStartDate);
     const nextWeekStart = isoDate(dateAfter(weekStartDate, 7));
@@ -558,9 +565,9 @@
       indicator.setAttribute('aria-hidden', 'true');
       menu.append(indicator);
     }
-    indicator.hidden = future.length === 0;
-    indicator.textContent = future.length > 99 ? '99+' : String(future.length);
-    const menuStatus = current.length + ' en cours, ' + upcoming.length + ' à venir';
+    indicator.hidden = pendingCount === 0;
+    indicator.textContent = pendingCount > 99 ? '99+' : String(pendingCount);
+    const menuStatus = pendingCount + ' en attente, ' + current.length + ' en cours, ' + upcoming.length + ' à venir';
     menu.title = menuStatus;
     menu.setAttribute('aria-label', 'Mes réservations, ' + menuStatus);
     const emptyRow = message => {
@@ -2421,6 +2428,14 @@
       notify('Choisissez une date et un horaire entre 08:00 et 19:00');
       return;
     }
+    const nowParis = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).format(new Date());
+    if (date + ' ' + end <= nowParis) {
+      notify('Choisissez un créneau à venir pour votre réservation');
+      return;
+    }
     if (blockedDates.has(date)) {
       notify('Date indisponible : ' + blockedTitles.get(date) + '. Choisissez un autre jour.');
       return;
@@ -2429,7 +2444,7 @@
       notify('Ce créneau est déjà demandé pour cette zone');
       return;
     }
-    reservations.push({
+    const request = {
       zone, date, start, end, purpose: $('flight-purpose').value,
       droneId: drone.id, machineKind: drone.machineKind, machineBrand: drone.brand,
       machineModel: drone.model, droneClass: drone.droneClass,
@@ -2438,8 +2453,12 @@
       creatorEmail: $('profile-email').value.trim(),
       company: $('profile-company').value.trim(),
       status: 'pending'
-    });
-    saveReservations();
+    };
+    reservations.push(request);
+    if (!saveReservations()) {
+      reservations.pop();
+      return;
+    }
     selectedZone = zone;
     calendarDate = parseDate(date);
     refreshMainMap();
