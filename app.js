@@ -37,6 +37,7 @@
   const informationKey = 'aerozone-admin-information-v1';
   const blockedDatesKey = 'aerozone-blocked-dates-v1';
   const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
+  const adminRoute = new URLSearchParams(window.location.search).get('administration') === '1';
   const center = [48.5951055, 2.3212347];
   // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
   const siteViewZoom = 12.7;
@@ -1711,6 +1712,7 @@
   }
 
   async function openAdmin(section = 'map') {
+    if (!adminRoute) return;
     if (!adminAuthenticated) {
       const entered = await askUser('Accès administrateur', {
         secret: true,
@@ -2047,7 +2049,9 @@
       refreshBlockedDates();
     }
   });
+  $('admin-nav').hidden = !adminRoute;
   $('admin-nav').onclick = () => openAdmin('map');
+  window.addEventListener('aerozone-admin-ready', () => openAdmin('map'));
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
   $('admin-information-open').onclick = () => openAdmin('information');
@@ -2123,7 +2127,10 @@
     refreshReservationViews();
     notify('Réservation supprimée : le créneau est de nouveau disponible.');
   };
-  $('exit-admin').onclick = () => setView('booking');
+  $('exit-admin').onclick = () => {
+    if (adminRoute) window.location.assign(new URL('./', window.location.href).href);
+    else setView('booking');
+  };
   $('profile-open').onclick = () => setView('profile');
   $('profile-nav').onclick = () => setView('profile');
   $('booking-profile-link').onclick = () => setView('profile');
