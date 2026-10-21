@@ -38,6 +38,7 @@
   const blockedDatesKey = 'aerozone-blocked-dates-v1';
   const inviteMode = new URLSearchParams(window.location.search).get('invitation') === '1';
   const adminRoute = new URLSearchParams(window.location.search).get('administration') === '1';
+  root.classList.toggle('admin-route', adminRoute);
   const center = [48.5951055, 2.3212347];
   // Même échelle sur toutes les cartes, indépendamment de la largeur de l'écran.
   const siteViewZoom = 12.7;
@@ -2000,7 +2001,7 @@
   }
 
   $('booking-open').onclick = () => setView('booking');
-  $('brand-home').onclick = () => setView('booking');
+  $('brand-home').onclick = () => adminRoute ? openAdmin('map') : setView('booking');
   $('reservations-open').onclick = () => setView('reservations');
   $('flight-dashboard-open').onclick = () => setView('dashboard');
   $('rules-open').onclick = () => setView('rules');
@@ -2051,6 +2052,15 @@
   });
   $('admin-nav').hidden = !adminRoute;
   $('admin-nav').onclick = () => openAdmin('map');
+  window.addEventListener('aerozone-admin-login', event => {
+    const attempt = event.detail;
+    if (!adminRoute || !attempt) return;
+    if (attempt.identifier.trim().toLocaleLowerCase('fr-FR') === 'administrateur' &&
+      attempt.password === getMockPassword()) {
+      adminAuthenticated = true;
+      attempt.success = true;
+    }
+  });
   window.addEventListener('aerozone-admin-ready', () => openAdmin('map'));
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
