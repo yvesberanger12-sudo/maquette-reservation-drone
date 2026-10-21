@@ -66,6 +66,7 @@
   let dashboardResizeObserver = null;
   let feedbackTimer = null;
   let profileDrones = [];
+  let teamMembers = [];
   const mirrorMaps = new Map();
   const reservations = readReservations();
   const clients = readClients();
@@ -763,7 +764,7 @@
     client.profileSnapshot = {
       name: profile.name, firstname: profile.firstname, company: profile.company,
       email: profile.email, phone: profile.phone, role: profile.role,
-      licences: profile.licences, drones: profile.drones
+      licences: profile.licences, drones: profile.drones, teamMembers: profile.teamMembers
     };
     saveClients();
     renderClients();
@@ -1870,6 +1871,60 @@
     return 'drone-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   }
 
+  function renderTeamMembers() {
+    const list = $('team-member-list');
+    list.replaceChildren();
+    if (!teamMembers.length) {
+      list.append(calendarElement('p', 'empty', 'Aucun membre d’équipe ajouté.'));
+      return;
+    }
+    teamMembers.forEach(member => {
+      const row = calendarElement('div', 'team-member-row');
+      const details = document.createElement('div');
+      details.append(calendarElement('strong', '', [member.firstname, member.name].filter(Boolean).join(' ')));
+      const contact = [member.email, member.phone].filter(Boolean).join(' · ');
+      if (contact) details.append(calendarElement('span', '', contact));
+      const remove = calendarElement('button', 'team-member-remove', 'Retirer');
+      remove.type = 'button';
+      remove.setAttribute('aria-label', 'Retirer ' + [member.firstname, member.name].filter(Boolean).join(' '));
+      remove.onclick = () => {
+        teamMembers = teamMembers.filter(item => item.id !== member.id);
+        renderTeamMembers();
+        notify('Membre retiré de la liste. Enregistrez le profil pour conserver la modification.');
+      };
+      row.append(details, remove);
+      list.append(row);
+    });
+  }
+
+  function addTeamMember() {
+    const name = $('team-member-name').value.trim();
+    const firstname = $('team-member-firstname').value.trim();
+    const email = $('team-member-email').value.trim();
+    const phone = $('team-member-phone').value.trim();
+    if (!name || !firstname) {
+      notify('Renseignez le nom et le prénom du membre.');
+      (!name ? $('team-member-name') : $('team-member-firstname')).focus();
+      return;
+    }
+    if (email && !$('team-member-email').checkValidity()) {
+      $('team-member-email').reportValidity();
+      return;
+    }
+    const duplicate = teamMembers.some(member => email && member.email?.toLowerCase() === email.toLowerCase());
+    if (duplicate) {
+      notify('Cette adresse e-mail figure déjà dans l’équipe.');
+      return;
+    }
+    teamMembers.push({
+      id: 'member-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+      name, firstname, email, phone
+    });
+    renderTeamMembers();
+    for (const id of ['team-member-name', 'team-member-firstname', 'team-member-email', 'team-member-phone']) $(id).value = '';
+    notify('Membre ajouté à la liste. Enregistrez le profil pour conserver la modification.');
+  }
+
   function renumberDroneCards() {
     root.querySelectorAll('#profile-drones .drone-card').forEach(updateDroneSummary);
   }
@@ -1975,6 +2030,8 @@
       $('profile-role').value = 'Pilote opérateur';
       root.querySelectorAll('input[name="licence"]').forEach(input => { input.checked = false; });
       profileDrones = [];
+      teamMembers = [];
+      renderTeamMembers();
       renderDroneCards([]);
       syncBookingDrones([]);
       return;
@@ -1989,6 +2046,8 @@
         $(id).value = '';
       root.querySelector('.pilot strong').textContent = 'Profil non enregistré';
       $('pilot-company').textContent = 'Aucune société enregistrée';
+      teamMembers = [];
+      renderTeamMembers();
       renderDroneCards([]);
       syncBookingDrones([]);
       return;
@@ -2011,6 +2070,14 @@
         brand: saved.machineBrand || '', model: saved.machineModel,
         droneClass: '', weightGrams: ''
       }] : []);
+    teamMembers = Array.isArray(saved.teamMembers) ? saved.teamMembers.filter(member =>
+      member && typeof member.name === 'string' && typeof member.firstname === 'string').map(member => ({
+        id: member.id || 'member-' + Math.random().toString(36).slice(2, 10),
+        name: member.name, firstname: member.firstname,
+        email: typeof member.email === 'string' ? member.email : '',
+        phone: typeof member.phone === 'string' ? member.phone : ''
+      })) : [];
+    renderTeamMembers();
     renderDroneCards(profileDrones);
     syncBookingDrones(profileDrones);
     root.querySelector('.pilot strong').textContent =
@@ -2271,6 +2338,7 @@
     $('admin-member-panel').hidden = true;
   };
   $('add-profile-drone').onclick = addNewDroneDraft;
+  $('add-team-member').onclick = addTeamMember;
   $('edit-main-zone').onclick = enterMainEdit;
   $('delete-main-points').onclick = showDeletePoints;
   $('edit-flight-zones').onclick = enterFlightEdit;
@@ -2492,7 +2560,7 @@
       phone: $('profile-phone').value.trim(),
       role: $('profile-role').value,
       licences: [...root.querySelectorAll('input[name="licence"]:checked')].map(input => input.value),
-      drones
+      drones, teamMembers
     };
     if (inviteMode) {
       const code = $('invite-code').value;
