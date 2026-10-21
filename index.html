@@ -411,7 +411,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=reservations-calendrier-admin-20261010-2"></script>
+  <script src="app.js?v=adresse-admin-separee-20261021-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
@@ -469,7 +469,13 @@
       shell.inert = false;
       document.getElementById('booking-open').focus();
       window.dispatchEvent(new Event('resize'));
+      if (new URLSearchParams(window.location.search).get('administration') === '1')
+        window.dispatchEvent(new Event('aerozone-admin-ready'));
     };
+    if (new URLSearchParams(window.location.search).get('administration') === '1') {
+      enter();
+      return;
+    }
     if (new URLSearchParams(window.location.search).get('invitation') === '1') {
       enter();
       return;
