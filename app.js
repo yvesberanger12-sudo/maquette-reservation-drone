@@ -674,6 +674,18 @@
     const pendingLabel = pending.length + ' demande' + (pending.length > 1 ? 's' : '') + ' à valider';
     adminMenu.title = pendingLabel;
     adminMenu.setAttribute('aria-label', 'Administrateur, ' + pendingLabel);
+    const validationMenu = $('admin-validation-open');
+    let validationIndicator = $('admin-validation-indicator');
+    if (!validationIndicator) {
+      validationIndicator = calendarElement('span', 'nav-admin-indicator');
+      validationIndicator.id = 'admin-validation-indicator';
+      validationIndicator.setAttribute('aria-hidden', 'true');
+      validationMenu.append(validationIndicator);
+    }
+    validationIndicator.hidden = pending.length === 0;
+    validationIndicator.textContent = indicator.textContent;
+    validationMenu.title = pendingLabel;
+    validationMenu.setAttribute('aria-label', 'Validation des demandes, ' + pendingLabel);
     if (!pending.length) {
       list.append(calendarElement('p', 'empty',
         'Aucune demande en attente ici. Cette maquette ne synchronise pas les autres navigateurs ou appareils.'));
@@ -1712,7 +1724,7 @@
     return source?.match(/mockAdminPassword='([^']+)'/)?.[1] || '';
   }
 
-  async function openAdmin(section = 'map') {
+  async function openAdmin(section = 'calendar') {
     if (!adminRoute) return;
     if (!adminAuthenticated) {
       const entered = await askUser('Accès administrateur', {
@@ -2001,7 +2013,7 @@
   }
 
   $('booking-open').onclick = () => setView('booking');
-  $('brand-home').onclick = () => adminRoute ? openAdmin('map') : setView('booking');
+  $('brand-home').onclick = () => adminRoute ? openAdmin('calendar') : setView('booking');
   $('reservations-open').onclick = () => setView('reservations');
   $('flight-dashboard-open').onclick = () => setView('dashboard');
   $('rules-open').onclick = () => setView('rules');
@@ -2051,7 +2063,7 @@
     }
   });
   $('admin-nav').hidden = !adminRoute;
-  $('admin-nav').onclick = () => openAdmin('map');
+  $('admin-nav').onclick = () => openAdmin('calendar');
   window.addEventListener('aerozone-admin-login', event => {
     const attempt = event.detail;
     if (!adminRoute || !attempt) return;
@@ -2061,7 +2073,7 @@
       attempt.success = true;
     }
   });
-  window.addEventListener('aerozone-admin-ready', () => openAdmin('map'));
+  window.addEventListener('aerozone-admin-ready', () => openAdmin('calendar'));
   $('admin-map-open').onclick = () => openAdmin('map');
   $('admin-validation-open').onclick = () => openAdmin('validation');
   $('admin-information-open').onclick = () => openAdmin('information');
