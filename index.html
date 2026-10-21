@@ -227,6 +227,9 @@
     #drone-booking-mock .demo-login-submit{min-height:48px;margin-top:5px;border:0;border-radius:9px;background:#2b7894;color:#fff;font-size:15px;font-weight:750;cursor:pointer}
     #drone-booking-mock .demo-login-submit:hover{background:#368da9}
     #drone-booking-mock .demo-login-note{margin:20px 0 0;color:#bbd1db;font-size:11px;line-height:1.5}
+    #drone-booking-mock .demo-login-error{margin:0;color:#ffb0a8;font-size:12px;font-weight:700}
+    #drone-booking-mock.admin-route .nav>button:not(#admin-nav){display:none}
+    #drone-booking-mock.admin-route .pilot{display:none!important}
     @media(max-width:640px){#drone-booking-mock .demo-login-card{padding:26px 21px}#drone-booking-mock .demo-login h1{font-size:26px}}
     /* La colonne bleue suit toute la hauteur de la page ; le profil reste à son pied. */
     @media(min-width:641px){#drone-booking-mock .side{position:relative;top:auto;height:auto;min-height:100dvh;overflow:visible}}
@@ -277,6 +280,7 @@
       <p class="demo-login-subtitle">Gestion des espaces drone</p>
       <form class="demo-login-form" id="demo-login-form">
         <label for="demo-identifier">Identifiant<input id="demo-identifier" name="identifier" type="text" autocomplete="off" required></label>
+        <p class="demo-login-error" id="demo-login-error" role="alert" hidden>Identifiant ou mot de passe incorrect.</p>
         <label for="demo-password">Mot de passe<input id="demo-password" name="password" type="password" autocomplete="off" required></label>
         <button class="demo-login-submit" type="submit">Accéder à la maquette</button>
       </form>
@@ -411,7 +415,7 @@
       </div><div class="toast" id="toast" aria-live="polite"></div>
     </main>
   </div>
-  <script src="app.js?v=adresse-admin-separee-20261021-1"></script>
+  <script src="app.js?v=connexion-admin-20261021-1"></script>
   <script type="text/plain">window.__aerozoneSavedMain=(()=>{try{const collection=JSON.parse(localStorage.getItem('aerozone-zones')||'{"features":[]}');return collection.features?.find(feature=>feature.properties?.type==='main')||null}catch(e){return null}})();</script>
   <script type="text/plain">
     const root=document.getElementById('drone-booking-mock'),zoneSelect=document.getElementById('zone-select'),zoneLabel=document.getElementById('zone-label'),toast=document.getElementById('toast');
@@ -462,28 +466,47 @@
     const gate = document.getElementById('demo-login');
     const shell = document.querySelector('#drone-booking-mock .shell');
     const form = document.getElementById('demo-login-form');
+    const identifier = document.getElementById('demo-identifier');
     const password = document.getElementById('demo-password');
+    const error = document.getElementById('demo-login-error');
+    const adminRoute = new URLSearchParams(window.location.search).get('administration') === '1';
+    if (adminRoute) {
+      document.title = 'Administration — AERO ZONE';
+      document.querySelector('.demo-login-subtitle').textContent = 'Administration des espaces drone';
+      document.querySelector('.demo-login-submit').textContent = 'Accéder à l’administration';
+      document.querySelector('.demo-login-note').textContent =
+        'Connexion de démonstration : l’accès n’est pas sécurisé par un serveur.';
+      document.querySelector('.brand-tagline').textContent = 'Administration des espaces drone';
+      document.getElementById('brand-home').setAttribute('aria-label', 'AERO ZONE — accueil administrateur');
+      document.getElementById('brand-home').title = 'Accueil administrateur';
+    }
     const enter = () => {
       password.value = '';
       gate.hidden = true;
       shell.inert = false;
-      document.getElementById('booking-open').focus();
+      document.getElementById(adminRoute ? 'admin-nav' : 'booking-open').focus();
       window.dispatchEvent(new Event('resize'));
-      if (new URLSearchParams(window.location.search).get('administration') === '1')
-        window.dispatchEvent(new Event('aerozone-admin-ready'));
+      if (adminRoute) window.dispatchEvent(new Event('aerozone-admin-ready'));
     };
-    if (new URLSearchParams(window.location.search).get('administration') === '1') {
+    if (!adminRoute && new URLSearchParams(window.location.search).get('invitation') === '1') {
       enter();
       return;
     }
-    if (new URLSearchParams(window.location.search).get('invitation') === '1') {
-      enter();
-      return;
-    }
-    document.getElementById('demo-identifier').focus();
+    identifier.focus();
+    form.addEventListener('input', () => { error.hidden = true; });
     form.addEventListener('submit', event => {
       event.preventDefault();
       if (!form.reportValidity()) return;
+      if (adminRoute) {
+        const attempt = { identifier: identifier.value, password: password.value, success: false };
+        window.dispatchEvent(new CustomEvent('aerozone-admin-login', { detail: attempt }));
+        if (!attempt.success) {
+          error.hidden = false;
+          password.value = '';
+          password.focus();
+          return;
+        }
+      }
       enter();
     });
   })();
